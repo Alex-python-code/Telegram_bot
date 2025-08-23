@@ -8,7 +8,7 @@ from asyncio import sleep
 import app.keyboards as kb
 import source.text_source as tsrc
 import source.def_source as dsrc
-import app.database.bot_requests as rq
+import app.bot_database.bot_requests as rq
 
 router = Router()
 

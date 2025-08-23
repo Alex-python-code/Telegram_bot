@@ -1,13 +1,10 @@
 from sqlalchemy import BigInteger, String, ForeignKey, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, sessionmaker, mapped_column, relationship
 from sqlalchemy.ext.asyncio import AsyncAttrs, async_sessionmaker, create_async_engine
-from sqlalchemy import create_engine
 
 engine = create_async_engine(url = 'sqlite+aiosqlite:///db.sqlite3')
-engine2 = create_engine(url = 'sqlite:///db.sqlite3')
 
 async_session = async_sessionmaker(engine)
-session = sessionmaker(engine2)
 
 class Base(AsyncAttrs, DeclarativeBase):
     pass
@@ -63,6 +60,8 @@ class News_source(Base):
     next_page_link_class = mapped_column(Text)
     class_of_news_blocks = mapped_column(Text)
     date_format = mapped_column(Text)
+    time_html_class = mapped_column(Text)
+    time_html_element = mapped_column(Text)
     notes = mapped_column(Text)
     
 class News_theme(Base):

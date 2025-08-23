@@ -1,6 +1,8 @@
 from bs4 import BeautifulSoup
 import requests
 
+from pathlib import Path
+from datetime import date
 class Parser():
     """
     Класс для парсинга новостных статей с веб-сайтов.
@@ -20,7 +22,8 @@ class Parser():
     """ 
     def __init__(self, url, parent_html_news_element, parent_html_news_class,
                  html_news_element, html_news_class, sublink_element, sublink_class,
-                 next_page_link_element, next_page_link_class, class_of_news_blocks, main_site):
+                 next_page_link_element, next_page_link_class, class_of_news_blocks, main_site,
+                 time_html_class, time_html_element):
         """
         Атрибуты:
             url (str): URL главной страницы для парсинга.
@@ -50,7 +53,8 @@ class Parser():
         self._cnt = 0
         self._soup = None
         self._main_site = main_site
-                    
+        self.time_html_class = time_html_class
+        self.time_html_element = time_html_element
     
     def _get_full_link(self, main_site, required_page):
         '''Получение полной ссылки'''
@@ -68,12 +72,19 @@ class Parser():
             return
         return soup
     
+    def time_determinant(self, news_time):
+        '''Метод для определения времени публикации новости'''
+        time = date.today()
+        
+
     def _html_subpages_parser(self):
         '''Метод для парсинга страницы каждой новости'''
         all_new_body = ''
         news_text = ''
         for i in self.temp:
             #print(i.text)
+            time = i.find(self.time_html_element, class_ = self.time_html_class)
+            print(time)
             suburl_tag_href = i.find(self.sublink_element, class_ = self.sublink_class)
 
             suburl_short = suburl_tag_href['href']
@@ -82,9 +93,12 @@ class Parser():
             _subsoup = self._get_html_code(_suburl)
             
             if _subsoup:
-                new_body = _subsoup.find_all('p')
-                label = _subsoup.find('span', class_ = 'topic-body__title')
-                print(f'topic of news {label.text}, {self._cnt}')
+                try:
+                    new_body = _subsoup.find('div', class_ = 'topic-page__container').find_all('p')
+                    label = _subsoup.find('span', class_ = 'topic-body__title') #!!!Обратить внимание!!!
+                    print(f'topic of news {label.text}, {self._cnt}')
+                except:
+                    print(f'Не удалось получить заголовок новости {self._cnt}')
             else:
                 print(f'Код подстраницы {_suburl} не был получен')
             
@@ -101,22 +115,13 @@ class Parser():
         #print(f'Now page {self.url}')
         if self.next_page_link_element and self.next_page_link_class:
                 next_page_link = self._soup.find_all(self.next_page_link_element, class_ = self.next_page_link_class)
-                list_of_links = []
-                for i in next_page_link:
-                    link = i['href']
-                    list_of_links.append(link)
-                if len(list_of_links) == 1:
-                    link = self._get_full_link(self._main_site, list_of_links[0])
-                    if link > self.url:
-                        self.url = link
-                    else:
-                        self._run = False
-                elif len(list_of_links) > 1:
-                    list_of_links.sort(reverse=True)
-                    link = self._get_full_link(self._main_site, list_of_links[0])
-                    self.url = link
+                if len(next_page_link) > 1:
+                    self.url = self._get_full_link(self._main_site, next_page_link[1]['href'])
+                elif self._cnt < 2:
+                    self.url = self._get_full_link(self._main_site, next_page_link[0]['href'])
                 else:
                     print(f'Ссылка для следующей страницы ресурса {self.url} не была найдена')
+                    self._run = False
 
                 #print(self.run)
                 #print(f'Next page {self.url}')
@@ -140,8 +145,9 @@ class Parser():
             #print(self.temp)
             self._get_next_page_link()    
             new = self._html_subpages_parser()
-            
-            news += new
+            self.file_path = str(Path(__file__).parent) + '/result.txt'
+            with open(self.file_path, "a", encoding="utf-8") as f:
+                f.write(new)
         print(self._cnt)
         return news
 

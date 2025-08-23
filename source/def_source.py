@@ -1,4 +1,4 @@
-import app.database.bot_requests as rq
+import app.bot_database.bot_requests as rq
 
 async def input_digit_limit_check(digits: str, limit: int):
     digits = digits.text.split(' ')

@@ -1,5 +1,5 @@
-from app.database.models import async_session
-from app.database.models import User, User_preferences, News, News_region, News_source, News_theme
+from app.bot_database.async_models import async_session
+from app.bot_database.async_models import User, User_preferences, News, News_region, News_source, News_theme
 from sqlalchemy import select, func
 
 

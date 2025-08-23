@@ -3,7 +3,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 from Web_parser import Parser
-import parser_requests as rq
+import parsers.parser_database.parser_requests as rq
 
 from pathlib import Path
 from datetime import date
@@ -19,7 +19,8 @@ class ParserStarter():
         try:
             self.source_info = rq.get_source_info(source_id)
         except Exception as e:
-            return None
+            print(f'Error in data_request: {e}')
+            return
         return self.source_info
     
     def date_generator(self, date_type):
@@ -35,7 +36,7 @@ class ParserStarter():
             source_info = self.data_request(source_id)
             if not source_info:
                 print(f'Не удалось получить информацию об источнике с id {source_id}')
-                return
+                break
             full_link = self.make_full_link(source_info.source_url, source_info.date_format)
             parser = Parser(url = full_link,
                             parent_html_news_element = source_info.parent_html_news_element,
@@ -47,7 +48,9 @@ class ParserStarter():
                             next_page_link_element = source_info.next_page_link_element, 
                             next_page_link_class = source_info.next_page_link_class,
                             class_of_news_blocks = source_info.class_of_news_blocks,
-                            main_site = source_info.source_url)
+                            main_site = source_info.source_url,
+                            time_html_class = source_info.time_html_class,
+                            time_html_element = source_info.time_html_class)
             result = parser.main_page_parser()
             file_path = self._path
             with open(file_path, "a", encoding="utf-8") as f:
