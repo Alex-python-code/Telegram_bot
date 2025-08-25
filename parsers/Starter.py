@@ -8,6 +8,7 @@ import parsers.parser_database.parser_requests as rq
 from pathlib import Path
 from datetime import date
 import logging
+import time
 
 
 class ParserStarter():
@@ -50,11 +51,13 @@ class ParserStarter():
                             class_of_news_blocks = source_info.class_of_news_blocks,
                             main_site = source_info.source_url,
                             time_html_class = source_info.time_html_class,
-                            time_html_element = source_info.time_html_class)
+                            time_html_element = source_info.time_html_element)
             result = parser.main_page_parser()
-            file_path = self._path
-            with open(file_path, "a", encoding="utf-8") as f:
-                f.write(result)
+            break
+            time.sleep(10)
+            #file_path = self._path
+            #with open(file_path, "a", encoding="utf-8") as f:
+            #    f.write(result)
             source_id += 1
         print('The end')
         

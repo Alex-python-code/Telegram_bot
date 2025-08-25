@@ -2,7 +2,38 @@ from bs4 import BeautifulSoup
 import requests
 
 from pathlib import Path
-from datetime import date
+import datetime
+import re
+
+
+class TimeUtils:
+    @staticmethod
+    def format_time(time):
+        '''Функция для очистки строки от не нужных символов'''
+        ftime = re.search(r'(\d{2}):(\d{2})', time)
+        #print(ftime.group(1))
+        return ftime.group(1)
+
+    
+    @staticmethod
+    def check_time(news_block, html_time_element, html_time_class) -> bool:
+        '''Функция для проверки совпадения времени новости и настоящего времени. Надо разделить на 2 функции'''
+        news_time = TimeUtils.get_news_time(news_block, html_time_element, html_time_class)
+        formatted_news_time = TimeUtils.format_time(news_time)
+        now_time = int(datetime.datetime.now().strftime('%H')) - 20
+        conclusion = int(formatted_news_time) == now_time
+        print(f'formatted_news_time: {formatted_news_time}')
+        print(f'now_time: {now_time}')
+        print(conclusion)
+        return conclusion
+
+    @staticmethod
+    def get_news_time(news_block, time_element, time_class):
+        time = news_block.find(time_element, class_ = time_class)
+        print(time.text)
+        return time.text
+
+
 class Parser():
     """
     Класс для парсинга новостных статей с веб-сайтов.
@@ -55,6 +86,7 @@ class Parser():
         self._main_site = main_site
         self.time_html_class = time_html_class
         self.time_html_element = time_html_element
+        self._is_first_page = True
     
     def _get_full_link(self, main_site, required_page):
         '''Получение полной ссылки'''
@@ -72,19 +104,20 @@ class Parser():
             return
         return soup
     
-    def time_determinant(self, news_time):
-        '''Метод для определения времени публикации новости'''
-        time = date.today()
-        
 
     def _html_subpages_parser(self):
         '''Метод для парсинга страницы каждой новости'''
         all_new_body = ''
         news_text = ''
+        stop_parsing = False
         for i in self.temp:
             #print(i.text)
-            time = i.find(self.time_html_element, class_ = self.time_html_class)
-            print(time)
+            if not TimeUtils.check_time(i, self.time_html_element, self.time_html_class):
+                if stop_parsing:
+                    self._run = False
+                    return all_new_body
+                continue
+
             suburl_tag_href = i.find(self.sublink_element, class_ = self.sublink_class)
 
             suburl_short = suburl_tag_href['href']
@@ -102,11 +135,13 @@ class Parser():
             else:
                 print(f'Код подстраницы {_suburl} не был получен')
             
-            for i in new_body:
-                news_text += i.text + "\n"
+            for news_string in new_body:
+                news_text += news_string.text + "\n"
             self._cnt += 1
+            #print(f'news_text: {news_text}')
             all_new_body += news_text
-        #print(all_new_body)
+            #print(f'all_new_body: {all_new_body}')
+            stop_parsing = True
         return all_new_body
 
     def _get_next_page_link(self):
@@ -117,7 +152,8 @@ class Parser():
                 next_page_link = self._soup.find_all(self.next_page_link_element, class_ = self.next_page_link_class)
                 if len(next_page_link) > 1:
                     self.url = self._get_full_link(self._main_site, next_page_link[1]['href'])
-                elif self._cnt < 2:
+                elif self._cnt < 2 and self._is_first_page:
+                    self._is_first_page = False
                     self.url = self._get_full_link(self._main_site, next_page_link[0]['href'])
                 else:
                     print(f'Ссылка для следующей страницы ресурса {self.url} не была найдена')
@@ -145,10 +181,14 @@ class Parser():
             #print(self.temp)
             self._get_next_page_link()    
             new = self._html_subpages_parser()
-            self.file_path = str(Path(__file__).parent) + '/result.txt'
-            with open(self.file_path, "a", encoding="utf-8") as f:
-                f.write(new)
-        print(self._cnt)
-        return news
+            print(f'new: {new}')
+            if new:
+                self.file_path = str(Path(__file__).parent) + '/result.txt'
+                with open(self.file_path, "a", encoding="utf-8") as f:
+                    f.write(new)
+                print(f'new: {new}')
+            #добавить обработчик ошибок, если new пустой
+        print(f'Новостей всего {self._cnt}')
+        return new
 
 
