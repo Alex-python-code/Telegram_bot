@@ -4,6 +4,7 @@ import requests
 from pathlib import Path
 import datetime
 import re
+import time
 
 
 class TimeUtils:
@@ -11,7 +12,6 @@ class TimeUtils:
     def format_time(time):
         '''Функция для очистки строки от не нужных символов'''
         ftime = re.search(r'(\d{2}):(\d{2})', time)
-        #print(ftime.group(1))
         return ftime.group(1)
 
     
@@ -20,7 +20,7 @@ class TimeUtils:
         '''Функция для проверки совпадения времени новости и настоящего времени. Надо разделить на 2 функции'''
         news_time = TimeUtils.get_news_time(news_block, html_time_element, html_time_class)
         formatted_news_time = TimeUtils.format_time(news_time)
-        now_time = int(datetime.datetime.now().strftime('%H')) - 20
+        now_time = int(datetime.datetime.now().strftime('%H')) - 1
         conclusion = int(formatted_news_time) == now_time
         print(f'formatted_news_time: {formatted_news_time}')
         print(f'now_time: {now_time}')
@@ -140,6 +140,7 @@ class Parser():
             self._cnt += 1
             #print(f'news_text: {news_text}')
             all_new_body += news_text
+            news_text = ''
             #print(f'all_new_body: {all_new_body}')
             stop_parsing = True
         return all_new_body
@@ -148,7 +149,7 @@ class Parser():
         '''Вспомогательный метод для получения ссылки на следующую страницу'''
         print('start')
         #print(f'Now page {self.url}')
-        if self.next_page_link_element and self.next_page_link_class:
+        if self.next_page_link_element and self.next_page_link_class and self._main_site:
                 next_page_link = self._soup.find_all(self.next_page_link_element, class_ = self.next_page_link_class)
                 if len(next_page_link) > 1:
                     self.url = self._get_full_link(self._main_site, next_page_link[1]['href'])
@@ -164,10 +165,9 @@ class Parser():
 
     def main_page_parser(self):
         '''Основной метод'''
-        news = ''
         while self._run:
-            print(self.url)
             try:
+                print(self.url)
                 response = requests.get(self.url)
                 self._soup = BeautifulSoup(response.text, 'lxml')
             except requests.exceptions.ConnectionError as e:
@@ -181,12 +181,10 @@ class Parser():
             #print(self.temp)
             self._get_next_page_link()    
             new = self._html_subpages_parser()
-            print(f'new: {new}')
             if new:
                 self.file_path = str(Path(__file__).parent) + '/result.txt'
                 with open(self.file_path, "a", encoding="utf-8") as f:
                     f.write(new)
-                print(f'new: {new}')
             #добавить обработчик ошибок, если new пустой
         print(f'Новостей всего {self._cnt}')
         return new

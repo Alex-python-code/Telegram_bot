@@ -32,12 +32,24 @@ class ParserStarter():
         return f'{source_link}/{link_date}'
     
     def start_parsing(self):
+        source_id = 1
+        required_fields = [
+            'source_url', 'date_format', 'parent_html_news_element', 'parent_html_news_class',
+            'html_news_element', 'html_news_class', 'sublink_element', 'sublink_class',
+            'next_page_link_element', 'next_page_link_class', 'class_of_news_blocks',
+            'time_html_class', 'time_html_element'
+        ]
         while True:
-            source_id = 1
             source_info = self.data_request(source_id)
             if not source_info:
                 print(f'Не удалось получить информацию об источнике с id {source_id}')
                 break
+
+            for field in required_fields:
+                if not getattr(source_info, field, None):
+                    print(f'Отсутствуют данные о ресурсе {source_info.source_url} в блоке {field}')
+                    return
+
             full_link = self.make_full_link(source_info.source_url, source_info.date_format)
             parser = Parser(url = full_link,
                             parent_html_news_element = source_info.parent_html_news_element,
@@ -52,12 +64,9 @@ class ParserStarter():
                             main_site = source_info.source_url,
                             time_html_class = source_info.time_html_class,
                             time_html_element = source_info.time_html_element)
-            result = parser.main_page_parser()
-            break
-            time.sleep(10)
-            #file_path = self._path
-            #with open(file_path, "a", encoding="utf-8") as f:
-            #    f.write(result)
+            parser.main_page_parser()
+            #break
+            #time.sleep(10)
             source_id += 1
         print('The end')
         
