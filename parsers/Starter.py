@@ -64,7 +64,18 @@ class ParserStarter():
                             main_site = source_info.source_url,
                             time_html_class = source_info.time_html_class,
                             time_html_element = source_info.time_html_element)
-            parser.main_page_parser()
+            parser_response = 0
+            while True:
+                parser_response = parser.main_page_parser(parser_response)
+                if type(parser_response) == int:
+                    continue
+                elif parser_response == False:
+                    print('Парсер завершил работу с ошибкой')
+                    return False
+                elif parser_response == True:
+                    print('Парсер успешно завершил работу')
+                    break
+
             #break
             #time.sleep(10)
             source_id += 1

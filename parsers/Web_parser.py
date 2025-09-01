@@ -10,7 +10,7 @@ import sys
 import os
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../ai"))
-from ai.ai_module import Ai
+from ai.async_ai_module import AsyncAi
 import asyncio
 
 class AiUtils:
@@ -41,16 +41,16 @@ class TimeUtils:
 
     
     @staticmethod
-    def check_time(news_block, html_time_element, html_time_class) -> bool:
-        '''Функция для проверки совпадения времени новости и настоящего времени. Надо разделить на 2 функции'''
+    def check_time(news_block, html_time_element, html_time_class):
+        '''Функция для проверки совпадения времени новости и настоящего времени'''
         news_time = TimeUtils.get_news_time(news_block, html_time_element, html_time_class)
         formatted_news_time = TimeUtils.format_time(news_time)
-        now_time = int(datetime.datetime.now().strftime('%H')) - 15
+        now_time = int(datetime.datetime.now().strftime('%H')) - 21
         conclusion = int(formatted_news_time) == now_time
         print(f'formatted_news_time: {formatted_news_time}')
         print(f'now_time: {now_time}')
         print(conclusion)
-        return conclusion
+        return [conclusion, now_time]
 
     @staticmethod
     def get_news_time(news_block, time_element, time_class):
@@ -114,8 +114,8 @@ class Parser():
         self._is_first_page = True
         self.exclude_word_in_news = ['фото:', 'изображение:', 'снимок:', 'кадр:', 'снял:']
         self.ai_model = 'gpt-5-nano'
-        self.assistant_text = 'тег выведи в конструкции в начале текста --тег""'
-        self.ai_system_text = 'уберите все лишнее и оставьте только самую суть и присвой один из тегов тексту Спортивные Политические Военные Научные Экономические Социальные Культурные'
+        self.assistant_text = 'это очень важно, сделав тег не по шаблону, всё сломается, конструкцию вывведи в самом начале. тег выведи в формате ---"тег"'
+        self.ai_system_text = 'уберите все лишнее и оставьте только самую суть и присвой один из тегов тексту Спортивные Политические Военные Научные Экономические Социальные Культурные. не использую никаких вводных конструкций, просто выведи сжатый текст'
         self.ai_tokens_limit = 100
         self.json_array = []
         self.file_path = str(Path(__file__).parent) + '/result.jsonl'
@@ -145,11 +145,12 @@ class Parser():
         stop_parsing = False
         for i in self.temp:
             #print(i.text)
-            if not TimeUtils.check_time(i, self.time_html_element, self.time_html_class):
+            if not TimeUtils.check_time(i, self.time_html_element, self.time_html_class)[0]:
                 if stop_parsing:
                     self._run = False
                     return all_new_body
                 continue
+            self.now_time_interval = TimeUtils.check_time(i, self.time_html_element, self.time_html_class)[1]
 
             suburl_tag_href = i.find(self.sublink_element, class_ = self.sublink_class)
 
@@ -171,14 +172,12 @@ class Parser():
             for news_string in new_body:
                 if not any(word in str(news_string.text).lower() for word in self.exclude_word_in_news):
                     news_text += news_string.text + ' '
-            #self.dict_of_news[self._cnt] = news_text
-            news_of_json_obj = AiUtils.build_batch_json_obj(str(self._cnt),
-                                                            self.ai_model,
-                                                            self.ai_system_text,
-                                                            news_text + self.assistant_text,
-                                                            self.ai_tokens_limit
-                                                            )
-            self.json_array.append(news_of_json_obj)
+
+            data_for_ai_request = {
+                'model': self.ai_model,
+                'prompt': self.ai_system_text + self.assistant_text + news_text
+            }
+            self.json_array.append(data_for_ai_request)
             self._cnt += 1
             #print(f'news_text: {news_text}')
             news_text = ''
@@ -204,9 +203,8 @@ class Parser():
                 #print(self.run)
                 #print(f'Next page {self.url}')
 
-    def main_page_parser(self):
+    def main_page_parser(self, attempts):
         '''Основной метод'''
-        
         while self._run:
             try:
                 print(self.url)
@@ -214,7 +212,15 @@ class Parser():
                 self._soup = BeautifulSoup(response.text, 'lxml')
             except requests.exceptions.ConnectionError as e:
                 print(f'Ошибка при получении html кода главной страницы {self.url}: {e}')
-                return
+                if attempts < 3:
+                    print(f'Попытка подключения № {attempts}')
+                    attempts += 1
+                    time.sleep(3)
+                    return attempts
+                else:
+                    print('Превышено количество попыток подключения, завершаю работу')
+                    return False
+                
             if self._soup:    
                 self.temp = self._soup.find(self.parent_html_news_element, class_ = self.parent_html_news_class).find_all(self.html_news_element, class_ = self.html_news_class)
             else:
@@ -224,13 +230,9 @@ class Parser():
             self._get_next_page_link()    
             self._html_subpages_parser()
 
-        with open(self.file_path, 'a') as f:
-            for obj in self.json_array:
-                json_string = json.dumps(obj, ensure_ascii=False)
-                f.write(json_string + '\n')
         print(f'Новостей всего {self._cnt}')
-        summarizer = Ai(self.file_path, '24h')
-        summarizer.start_batch_job()
+        ai_module = AsyncAi(self.now_time_interval)
+        asyncio.run(ai_module.main(self.json_array))
         return True
 
 
