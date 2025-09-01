@@ -33,7 +33,6 @@ class News(Base):
     news_body = mapped_column(Text)
     source_url = mapped_column(Text)
     source_group: Mapped[int] = mapped_column() #Телеграм или интернет
-    news_type: Mapped[int] = mapped_column(ForeignKey('news_sources.source_id')) #Спортивные, политические и тд
     news_theme: Mapped[int] = mapped_column()
     news_region_id: Mapped[int] = mapped_column(ForeignKey('news_regions.region_id'))
     news_datetime: Mapped[int] = mapped_column()

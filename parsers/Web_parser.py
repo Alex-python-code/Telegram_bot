@@ -5,6 +5,31 @@ from pathlib import Path
 import datetime
 import re
 import time
+import json
+import sys
+import os
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "../ai"))
+from ai.ai_module import Ai
+import asyncio
+
+class AiUtils:
+    @staticmethod
+    def build_batch_json_obj(id: str, model, system_text, user_text, tokens_limit):
+        json_obj = {
+            "custom_id": id,
+            "method": "POST",
+            "url": "/v1/chat/completions",
+            "body": {
+                "model": model,
+                "messages": [
+                {"role": "system", "content": system_text},
+                {"role": "user", "content": user_text}
+                ],
+                "max_tokens": tokens_limit
+            }
+            }
+        return json_obj
 
 
 class TimeUtils:
@@ -20,7 +45,7 @@ class TimeUtils:
         '''Функция для проверки совпадения времени новости и настоящего времени. Надо разделить на 2 функции'''
         news_time = TimeUtils.get_news_time(news_block, html_time_element, html_time_class)
         formatted_news_time = TimeUtils.format_time(news_time)
-        now_time = int(datetime.datetime.now().strftime('%H')) - 1
+        now_time = int(datetime.datetime.now().strftime('%H')) - 15
         conclusion = int(formatted_news_time) == now_time
         print(f'formatted_news_time: {formatted_news_time}')
         print(f'now_time: {now_time}')
@@ -87,6 +112,14 @@ class Parser():
         self.time_html_class = time_html_class
         self.time_html_element = time_html_element
         self._is_first_page = True
+        self.exclude_word_in_news = ['фото:', 'изображение:', 'снимок:', 'кадр:', 'снял:']
+        self.ai_model = 'gpt-5-nano'
+        self.assistant_text = 'тег выведи в конструкции в начале текста --тег""'
+        self.ai_system_text = 'уберите все лишнее и оставьте только самую суть и присвой один из тегов тексту Спортивные Политические Военные Научные Экономические Социальные Культурные'
+        self.ai_tokens_limit = 100
+        self.json_array = []
+        self.file_path = str(Path(__file__).parent) + '/result.jsonl'
+
     
     def _get_full_link(self, main_site, required_page):
         '''Получение полной ссылки'''
@@ -136,10 +169,18 @@ class Parser():
                 print(f'Код подстраницы {_suburl} не был получен')
             
             for news_string in new_body:
-                news_text += news_string.text + "\n"
+                if not any(word in str(news_string.text).lower() for word in self.exclude_word_in_news):
+                    news_text += news_string.text + ' '
+            #self.dict_of_news[self._cnt] = news_text
+            news_of_json_obj = AiUtils.build_batch_json_obj(str(self._cnt),
+                                                            self.ai_model,
+                                                            self.ai_system_text,
+                                                            news_text + self.assistant_text,
+                                                            self.ai_tokens_limit
+                                                            )
+            self.json_array.append(news_of_json_obj)
             self._cnt += 1
             #print(f'news_text: {news_text}')
-            all_new_body += news_text
             news_text = ''
             #print(f'all_new_body: {all_new_body}')
             stop_parsing = True
@@ -165,6 +206,7 @@ class Parser():
 
     def main_page_parser(self):
         '''Основной метод'''
+        
         while self._run:
             try:
                 print(self.url)
@@ -180,13 +222,15 @@ class Parser():
             
             #print(self.temp)
             self._get_next_page_link()    
-            new = self._html_subpages_parser()
-            if new:
-                self.file_path = str(Path(__file__).parent) + '/result.txt'
-                with open(self.file_path, "a", encoding="utf-8") as f:
-                    f.write(new)
-            #добавить обработчик ошибок, если new пустой
+            self._html_subpages_parser()
+
+        with open(self.file_path, 'a') as f:
+            for obj in self.json_array:
+                json_string = json.dumps(obj, ensure_ascii=False)
+                f.write(json_string + '\n')
         print(f'Новостей всего {self._cnt}')
-        return new
+        summarizer = Ai(self.file_path, '24h')
+        summarizer.start_batch_job()
+        return True
 
 

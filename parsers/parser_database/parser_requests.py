@@ -1,5 +1,5 @@
-from parsers.parser_database.sync_models import User, User_preferences, News, News_region, News_source, News_theme
-from parsers.parser_database.sync_models import Session
+from parsers.parser_database.sync_parser_models import News_source
+from parsers.parser_database.sync_parser_models import Session
 from sqlalchemy import select
 
 def get_source_info(source_id):
