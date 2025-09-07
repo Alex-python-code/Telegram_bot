@@ -90,11 +90,14 @@ async def get_users_news_preferences(tg_id):
         preferences = await session.scalar(select(User_preferences).where(User_preferences.tg_id == tg_id))
         return preferences
     
-async def get_news_for_user(mass_media, news_themes, exclude_sources, limit, page_number, day):
+async def get_news_for_user(mass_media, news_themes, exclude_sources, limit, page_number, day, time):
+    if len(time) == 0:
+        time = [i for i in range(25)]
     async with async_session() as session:
         if mass_media == 2:
             news = (await session.scalars(select(News)
                                          .where(News.news_date == day,
+                                                News.news_time.in_(time),
                                                 News.source_name != exclude_sources,
                                                 News.news_theme == news_themes)
                                          .limit(limit)
@@ -102,6 +105,7 @@ async def get_news_for_user(mass_media, news_themes, exclude_sources, limit, pag
         else:
             news = (await session.scalars(select(News)
                                          .where(News.news_date == day,
+                                                News.news_time.in_(time),
                                                 News.source_group == mass_media,
                                                 News.source_name != exclude_sources,
                                                 News.news_theme == news_themes)

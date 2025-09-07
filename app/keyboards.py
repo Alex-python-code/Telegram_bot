@@ -23,8 +23,8 @@ first_start = InlineKeyboardMarkup(inline_keyboard=[
 
 
 main_menu = ReplyKeyboardMarkup(keyboard = [
-    [KeyboardButton(text = "Новости"), KeyboardButton(text = "Подписаться на рассылку")],
-    [KeyboardButton(text = "Live режим"), KeyboardButton(text = "Профиль")],
+    [KeyboardButton(text = "Новости")],
+    [KeyboardButton(text = "Профиль")],
     [KeyboardButton(text = 'Настройки')]],
     resize_keyboard=True,
     one_time_keyboard=True
@@ -54,4 +54,11 @@ news_kb = ReplyKeyboardMarkup(keyboard = [
     [KeyboardButton(text = 'Ещё новости')],
     [KeyboardButton(text = 'В главное меню')]],
     resize_keyboard=True
+)
+
+selecting_time_interval_for_news = ReplyKeyboardMarkup(keyboard = [
+    [KeyboardButton(text = 'За час')],
+    [KeyboardButton(text = 'За день')]],
+    resize_keyboard = True,
+    one_time_keyboard = True
 )

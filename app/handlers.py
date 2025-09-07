@@ -13,6 +13,8 @@ import app.bot_database.bot_requests as rq
 router = Router()
 
 class Viewing_news(StatesGroup):
+    select_time_interval = State()
+    select_time = State()
     select_day = State()
     page_number = State()
     num_of_news = State()
@@ -33,7 +35,7 @@ class Reg(StatesGroup):
 
 
 @router.message(CommandStart())
-async def cmd_start(message: Message, state: State):
+async def cmd_start(message: Message, state: FSMContext):
     if await rq.is_user_first(message.from_user.id):
         await rq.reg_user(message.from_user.id, message.from_user.first_name)
         await message.answer(tsrc.greeting,
@@ -44,7 +46,7 @@ async def cmd_start(message: Message, state: State):
                         reply_markup = kb.main_menu)
     
 @router.callback_query(F.data == "main_menu")
-async def main_menu(callback: CallbackQuery, state: State):
+async def main_menu(callback: CallbackQuery, state: FSMContext):
     user_state = await state.get_state()
     print(user_state)
     if user_state:
@@ -74,28 +76,54 @@ async def user_profile(message: Message):
 Подписка на рассылку новостей: {data['mailing']}\n\
 Тип новостей: {data['news_type']}\n\
 Источники новостей: {data['news_sources']}\n\
-Исключённые источники: {data['exclude_news_sources']}\n\
-Регион новостей: {data['news_region']}')
+Исключённые источники: {data['exclude_news_sources']}')
+
 
 
 @router.message(F.text == 'В главное меню', Viewing_news.select_day)
-async def go_to_main_menu(message: Message, state: State):
+async def go_to_main_menu(message: Message, state: FSMContext):
     await state.clear()
     await message.answer('Это главное меню\nЗдесь вы можете вабрать интересующие разделы',
                         reply_markup = kb.main_menu)
 
 
 @router.message(F.text == 'Новости')
-async def last_news(message: Message, state: State):
-    '''Выбор новостного периода'''
-    await state.set_state(Viewing_news.select_day)
-    #await state.update_data(page_number = 0)
+async def news_time_interval(message: Message, state: FSMContext):
+    await message.answer('Вы хотите посмотреть новости за определённый час или все новости за определённый день?',
+                         reply_markup = kb.selecting_time_interval_for_news)
+    await state.set_state(Viewing_news.select_time_interval)
+    await state.update_data(select_time = [])
+
+
+@router.message(Viewing_news.select_time_interval, F.text == 'За час')
+async def selecting_type_intervals(message: Message, state: FSMContext):
+    await message.answer('Напишите час (или часы) за которые вы хотите посмотреть новости.\nПример: 1 18 19 17')
+    await state.set_state(Viewing_news.select_time)
+
+@router.message(Viewing_news.select_time, F.text)
+async def selecting_hour(message: Message, state: FSMContext):
+    '''Выбор часа новостей'''
+    print(await state.get_state())
+
+    if await dsrc.input_is_digit(message, None):
+        await state.update_data(select_time = [hour for hour in message.text.split()])
+    else:
+        return
+    await state.set_state(Viewing_news.user_news)
     await message.answer('Выберите за какой день Вы хотите посмотреть новости',
                          reply_markup = kb.news_dates)
 
 
-@router.message(F.text, Viewing_news.select_day)
-async def today_news(message: Message, state: State):
+@router.message(F.text == 'За день', Viewing_news.select_time_interval)
+async def selecting_day(message: Message, state: FSMContext):
+    await message.answer('Выберите за какой день Вы хотите посмотреть новости',
+                         reply_markup = kb.news_dates)
+    await state.set_state(Viewing_news.user_news)
+    
+
+
+@router.message(F.text, Viewing_news.user_news)
+async def today_news(message: Message, state: FSMContext):
     '''Показ новостей за выбранный день'''
     encode_news_days = {'Сегодня': 0, 'Вчера': 1, 'Позавчера': 2}
 
@@ -135,7 +163,8 @@ async def today_news(message: Message, state: State):
                                                 preferences.exclude_news_sources,
                                                 5,
                                                 news_viewing_state['page_number'],
-                                                news_viewing_state['select_day']
+                                                news_viewing_state['select_day'],
+                                                news_viewing_state['select_time']
                                                 )
         await state.update_data(user_news = today_news[0],
                                 page_number = today_news[1])
@@ -160,7 +189,7 @@ async def settings(message: Message):
 
 #@router.callback_query(F.data == 'set_news_region')
 #Обновление только региона новостей пользователя
-async def set_news_region(callback: CallbackQuery, state: State):
+async def set_news_region(callback: CallbackQuery, state: FSMContext):
     await state.set_state(Set_only_news_region.only_news_region)
     await callback.answer('')
     if not await rq.does_user_have_preferences(callback.message.from_user.id):
@@ -172,7 +201,7 @@ async def set_news_region(callback: CallbackQuery, state: State):
 
 #@router.message(Set_only_news_region.only_news_region)
 #Запись в бд только региона новостей пользователя
-async def set_news_region(message: Message, state: State):
+async def set_news_region(message: Message, state: FSMContext):
     if not message.text.isdigit() or not int(message.text) in await dsrc.all_regions('id'):
             await message.answer('Вы ввели не корректное значение, пожалуйста, выберите один из поддерживаемых регионов\nПример: 18')
             return
@@ -185,30 +214,35 @@ async def set_news_region(message: Message, state: State):
 
 
 @router.callback_query(F.data == 'preferences')
-async def preferences_one(callback: CallbackQuery, state: State):
+async def preferences_one(callback: CallbackQuery, state: FSMContext):
     '''Установка источников новостей'''
     await state.set_state(Set_preferences.source)
     await callback.answer('')
     await callback.message.answer('Выберите источники',
                                   reply_markup=kb.news_source)
     
+
 @router.message(Set_preferences.source, F.text)
-async def preferences_two(message: Message, state: State):
+async def preferences_two(message: Message, state: FSMContext):
     '''Установка новостных тем'''
     encode_sources = {'Официальные': 1, 'Не официальные': 0, 'Оба источника': 2}
+
     if not message.text in encode_sources.keys():
         await message.answer("Такого источника нет")
         return
+    
     await state.update_data(source = encode_sources[message.text])
     await state.set_state(Set_preferences.news_types)
     await message.answer(f'Выберите новостные темы которые Вам интересны.\n{tsrc.number_select_format}{await dsrc.all_news_themes()}',
                         reply_markup=kb.go_to_main_menu)
     
+
 @router.message(Set_preferences.news_types, F.text)
-async def preferences_three(message: Message, state: State):
+async def preferences_three(message: Message, state: FSMContext):
     '''Исключение источников новостей'''
     all_news_sources = await rq.get_count_of_news_sources()
     #print(all_news_sources)
+
     if not await dsrc.input_is_digit(message, all_news_sources):
         return
     await state.update_data(news_types = message.text)
@@ -216,11 +250,13 @@ async def preferences_three(message: Message, state: State):
 
     user_news_preferences = await state.get_data()
     sources_encode = {'Официальные': 0, 'Не официальные': 1}
+
     if user_news_preferences['source'] == 'Официальные' or user_news_preferences["source"] == 'Не официальные':
         await message.answer(f'Выберите новостные источники которые Вам не нравятся\n{tsrc.number_select_format}{await dsrc.all_news_sources(sources_encode[user_news_preferences['source']])}',
                              reply_markup=kb.go_to_main_menu)
     else:
         await message.answer(f'''Выберите новостные источники которые Вам не нравятся
+                             
 {tsrc.number_select_format}Официальные:
 {await dsrc.all_news_sources(sources_encode['Официальные'])}\n
 Не официальные:
@@ -229,7 +265,7 @@ async def preferences_three(message: Message, state: State):
     
 #@router.message(Set_preferences.exclude_news_sources, F.text)
 #Регион новосетей пользователя
-async def preferences_four(message: Message, state: State):
+async def preferences_four(message: Message, state: FSMContext):
     user_news_preferences = await state.get_data()
     if user_news_preferences['source'] == 'Оба источника':
         exclude_news_sources_limit = 6
@@ -241,18 +277,22 @@ async def preferences_four(message: Message, state: State):
     await state.set_state(Set_preferences.news_region)
     await message.answer(f'Для персонализации новостей выберите свой регион.\nЕсли ваш регион отстуствует, то можете выбрать 0 (Россия)\n\n\
 {await dsrc.all_regions('id and name')}\nВведите одно число без разделительных знаков\nПример: 18', reply_markup=kb.go_to_main_menu)
-    
+   
+
 @router.message(Set_preferences.exclude_news_sources)
 #Запись новостных предпочтений в бд
-async def preferences_five(message: Message, state: State):
+async def preferences_five(message: Message, state: FSMContext):
     await state.update_data(exclude_news_sources = message.text)
     user_news_preferences = await state.get_data()
+
     if user_news_preferences['source'] == 'Оба источника':
         exclude_news_sources_limit = 6
     else:
         exclude_news_sources_limit = 3
+
     if not await dsrc.input_is_digit(message, exclude_news_sources_limit):
         return
+    
     tg_id = message.from_user.id
     await rq.set_users_preferences(tg_id, user_news_preferences['source'], user_news_preferences['news_types'], user_news_preferences['exclude_news_sources'])
     await state.clear()
