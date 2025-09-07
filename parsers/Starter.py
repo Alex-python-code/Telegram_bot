@@ -63,7 +63,9 @@ class ParserStarter():
                             class_of_news_blocks = source_info.class_of_news_blocks,
                             main_site = source_info.source_url,
                             time_html_class = source_info.time_html_class,
-                            time_html_element = source_info.time_html_element)
+                            time_html_element = source_info.time_html_element,
+                            is_mass_media = source_info.mass_media,
+                            source_name = source_info.notes)
             parser_response = 0
             while True:
                 parser_response = parser.main_page_parser(parser_response)

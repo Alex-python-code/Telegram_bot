@@ -44,21 +44,21 @@ async def reg_user(tg_id, user_name):
                          user_name = user_name))
         await session.commit()
         
-async def set_users_preferences(tg_id, news_source, news_types, exclude_news_sources, news_region):
+async def set_users_preferences(tg_id, news_source, news_types, exclude_news_sources):
     async with async_session() as session:
         user = await session.scalar(select(User_preferences).where(User_preferences.tg_id == tg_id))
         if not user:
             session.add(User_preferences(tg_id = tg_id,
                                         news_sources = news_source,
                                         news_types = news_types,
-                                        exclude_news_sources = exclude_news_sources,
-                                        news_region = news_region))
+                                        exclude_news_sources = exclude_news_sources))
+                                        #news_region = news_region))
         elif user:
             user.tg_id = tg_id
             user.news_sources = news_source
             user.news_types = news_types
             user.exclude_news_sources = exclude_news_sources
-            user.news_region = news_region
+            #user.news_region = news_region
         await session.commit()
         
 async def reset_users_region(location, tg_id):
@@ -84,4 +84,28 @@ async def get_source_info(source_id):
             print(f'Error getting source info: {e}')
             return []
         return source
-            
+
+async def get_users_news_preferences(tg_id):
+    async with async_session() as session:
+        preferences = await session.scalar(select(User_preferences).where(User_preferences.tg_id == tg_id))
+        return preferences
+    
+async def get_news_for_user(mass_media, news_themes, exclude_sources, limit, page_number, day):
+    async with async_session() as session:
+        if mass_media == 2:
+            news = (await session.scalars(select(News)
+                                         .where(News.news_date == day,
+                                                News.source_name != exclude_sources,
+                                                News.news_theme == news_themes)
+                                         .limit(limit)
+                                         .offset(page_number * limit))).all()
+        else:
+            news = (await session.scalars(select(News)
+                                         .where(News.news_date == day,
+                                                News.source_group == mass_media,
+                                                News.source_name != exclude_sources,
+                                                News.news_theme == news_themes)
+                                         .limit(limit)
+                                         .offset(page_number * limit))).all()
+        page_number += 1
+        return [news, page_number]

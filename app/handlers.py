@@ -12,11 +12,17 @@ import app.bot_database.bot_requests as rq
 
 router = Router()
 
+class Viewing_news(StatesGroup):
+    select_day = State()
+    page_number = State()
+    num_of_news = State()
+    user_preferences = State()
+    user_news = State()
 class Set_preferences(StatesGroup):
     source = State()
     news_types = State()
     exclude_news_sources = State()
-    news_region = State()
+    #news_region = State()
     
 class Set_only_news_region(StatesGroup):
     only_news_region = State()
@@ -26,18 +32,14 @@ class Reg(StatesGroup):
     number = State()
 
 
-@router.message(F.text == 'Хочу ссылочку на хранилище')
-async def send_url(message: Message):
-    await message.answer('Ой, да пожалуйста, вот Ваша ссылочка',
-                         reply_markup=kb.settings)
-
 @router.message(CommandStart())
-async def cmd_start(message: Message):
+async def cmd_start(message: Message, state: State):
     if await rq.is_user_first(message.from_user.id):
         await rq.reg_user(message.from_user.id, message.from_user.first_name)
         await message.answer(tsrc.greeting,
                             reply_markup = kb.first_start)
     else:
+        await state.clear()
         await message.reply(f'Привет!\nТвой ТГ ID: {message.from_user.id}\nА вот твоё имя {message.from_user.first_name}\nНу а это твой ник @{message.from_user.username}',
                         reply_markup = kb.main_menu)
     
@@ -74,20 +76,89 @@ async def user_profile(message: Message):
 Источники новостей: {data['news_sources']}\n\
 Исключённые источники: {data['exclude_news_sources']}\n\
 Регион новостей: {data['news_region']}')
+
+
+@router.message(F.text == 'В главное меню', Viewing_news.select_day)
+async def go_to_main_menu(message: Message, state: State):
+    await state.clear()
+    await message.answer('Это главное меню\nЗдесь вы можете вабрать интересующие разделы',
+                        reply_markup = kb.main_menu)
+
+
+@router.message(F.text == 'Новости')
+async def last_news(message: Message, state: State):
+    '''Выбор новостного периода'''
+    await state.set_state(Viewing_news.select_day)
+    #await state.update_data(page_number = 0)
+    await message.answer('Выберите за какой день Вы хотите посмотреть новости',
+                         reply_markup = kb.news_dates)
+
+
+@router.message(F.text, Viewing_news.select_day)
+async def today_news(message: Message, state: State):
+    '''Показ новостей за выбранный день'''
+    encode_news_days = {'Сегодня': 0, 'Вчера': 1, 'Позавчера': 2}
+
+    if message.text == 'В главное меню':
+        await state.clear()
+        await go_to_main_menu(message, state)
+        return
+
+    if not message.text in ['Сегодня', 'Вчера', 'Позавчера', 'Ещё новости']:
+        await message.answer('Не корректный запрос!\n Выберите один из пунктов на клавиатуре')
+        return
+
+    if message.text != 'Ещё новости': #Если первый запрос
+        preferences = await rq.get_users_news_preferences(message.from_user.id)
+        if not preferences:
+            await message.answer('У Вас не настроены новостные предпочтения, поэтому Вы не можете просматривать новости.\nПожалуйста, настройте свои предпочтения в настройках')
+            await state.clear()
+            await settings(message)
+            return
+        await state.update_data(select_day = encode_news_days[message.text],
+                                num_of_news = 0,
+                                page_number = 0,
+                                user_preferences = preferences,
+                                user_news = ''
+                                )
+    else:
+        __viewing_data = await state.get_data()
+        await state.update_data(num_of_news = __viewing_data['num_of_news'] + 1)
+        
+    news_viewing_state = await state.get_data()
+    preferences = news_viewing_state['user_preferences']
+    print((f'user preferences: {preferences.news_sources, preferences.news_types, preferences.exclude_news_sources, 5, news_viewing_state['page_number'], news_viewing_state['select_day']}'))
+    if len(news_viewing_state['user_news']) == 0:
+        print('get request')
+        today_news = await rq.get_news_for_user(preferences.news_sources,
+                                                preferences.news_types,
+                                                preferences.exclude_news_sources,
+                                                5,
+                                                news_viewing_state['page_number'],
+                                                news_viewing_state['select_day']
+                                                )
+        await state.update_data(user_news = today_news[0],
+                                page_number = today_news[1])
+        news_viewing_state = await state.get_data()
+    if not news_viewing_state['user_news']:
+        await message.answer('К сожалению, новости закончились или не были найдены :(')
+        await go_to_main_menu(message, state)
+        return
+    new = news_viewing_state['user_news']
+    await message.answer(new[0].news_body, reply_markup = kb.news_kb)
+    del new[0]
+    await state.update_data(user_news = new)
     
-    
+
+
+
 @router.message(F.text == 'Настройки')
 #Добавить функционал просмотра записанной локации пользователя через запрос в бд
 async def settings(message: Message):
     await message.answer('Настройки открыты', reply_markup=kb.settings)
 
-@router.callback_query(F.data == 'catalog')
-async def catalog(callback: CallbackQuery):
-    await callback.answer('')
-    await callback.message.answer('Нууу...\nКаталог пока пуст')
 
-
-@router.callback_query(F.data == 'set_news_region')
+#@router.callback_query(F.data == 'set_news_region')
 #Обновление только региона новостей пользователя
 async def set_news_region(callback: CallbackQuery, state: State):
     await state.set_state(Set_only_news_region.only_news_region)
@@ -99,7 +170,7 @@ async def set_news_region(callback: CallbackQuery, state: State):
     await callback.message.answer(f'Для персонализации новостей выберите свой регион.\nЕсли ваш регион отстуствует, то можете выбрать 0 (Россия)\n\n\
 {await dsrc.all_regions('id and name')}\nВведите одно число без разделительных знаков\nПример: 18')
 
-@router.message(Set_only_news_region.only_news_region)
+#@router.message(Set_only_news_region.only_news_region)
 #Запись в бд только региона новостей пользователя
 async def set_news_region(message: Message, state: State):
     if not message.text.isdigit() or not int(message.text) in await dsrc.all_regions('id'):
@@ -114,20 +185,21 @@ async def set_news_region(message: Message, state: State):
 
 
 @router.callback_query(F.data == 'preferences')
-#Источники новостей
 async def preferences_one(callback: CallbackQuery, state: State):
+    '''Установка источников новостей'''
     await state.set_state(Set_preferences.source)
     await callback.answer('')
     await callback.message.answer('Выберите источники',
                                   reply_markup=kb.news_source)
     
 @router.message(Set_preferences.source, F.text)
-#Темы новостей
 async def preferences_two(message: Message, state: State):
-    if not message.text in tsrc.news_sources:
+    '''Установка новостных тем'''
+    encode_sources = {'Официальные': 1, 'Не официальные': 0, 'Оба источника': 2}
+    if not message.text in encode_sources.keys():
         await message.answer("Такого источника нет")
         return
-    await state.update_data(source = message.text)
+    await state.update_data(source = encode_sources[message.text])
     await state.set_state(Set_preferences.news_types)
     await message.answer(f'Выберите новостные темы которые Вам интересны.\n{tsrc.number_select_format}{await dsrc.all_news_themes()}',
                         reply_markup=kb.go_to_main_menu)
@@ -141,6 +213,7 @@ async def preferences_three(message: Message, state: State):
         return
     await state.update_data(news_types = message.text)
     await state.set_state(Set_preferences.exclude_news_sources)
+
     user_news_preferences = await state.get_data()
     sources_encode = {'Официальные': 0, 'Не официальные': 1}
     if user_news_preferences['source'] == 'Официальные' or user_news_preferences["source"] == 'Не официальные':
@@ -154,7 +227,7 @@ async def preferences_three(message: Message, state: State):
 {await dsrc.all_news_sources(sources_encode['Не официальные'])}''',
                              reply_markup=kb.go_to_main_menu)
     
-@router.message(Set_preferences.exclude_news_sources, F.text)
+#@router.message(Set_preferences.exclude_news_sources, F.text)
 #Регион новосетей пользователя
 async def preferences_four(message: Message, state: State):
     user_news_preferences = await state.get_data()
@@ -169,19 +242,24 @@ async def preferences_four(message: Message, state: State):
     await message.answer(f'Для персонализации новостей выберите свой регион.\nЕсли ваш регион отстуствует, то можете выбрать 0 (Россия)\n\n\
 {await dsrc.all_regions('id and name')}\nВведите одно число без разделительных знаков\nПример: 18', reply_markup=kb.go_to_main_menu)
     
-@router.message(Set_preferences.news_region)
+@router.message(Set_preferences.exclude_news_sources)
 #Запись новостных предпочтений в бд
 async def preferences_five(message: Message, state: State):
-    if not message.text.isdigit() or ' ' in message.text or not int(message.text) in await dsrc.all_regions('id'):
-        await message.answer('Вы ввели не корректное значение, пожалуйста, выберите один из поддерживаемых регионов\nПример: 18')
-        return
-    await state.update_data(news_region = message.text)
+    await state.update_data(exclude_news_sources = message.text)
     user_news_preferences = await state.get_data()
+    if user_news_preferences['source'] == 'Оба источника':
+        exclude_news_sources_limit = 6
+    else:
+        exclude_news_sources_limit = 3
+    if not await dsrc.input_is_digit(message, exclude_news_sources_limit):
+        return
     tg_id = message.from_user.id
-    await rq.set_users_preferences(tg_id, user_news_preferences['source'], user_news_preferences['news_types'], user_news_preferences['exclude_news_sources'], user_news_preferences['news_region'])
+    await rq.set_users_preferences(tg_id, user_news_preferences['source'], user_news_preferences['news_types'], user_news_preferences['exclude_news_sources'])
     await state.clear()
     await message.answer(f'Ваши предпочтения настроены!\nПосмотреть или изменить свои предпочтения вы можете в настройках\n{user_news_preferences}', 
                          reply_markup=kb.finish_select_of_news_preferences)
+    
+
     
 
     

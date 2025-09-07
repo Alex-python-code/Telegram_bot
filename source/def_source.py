@@ -64,5 +64,5 @@ async def all_news_sources(source_type):
         return cnt
     all_sources = ''
     for source in data:
-        all_sources += (f"{source.source_id}. {source.source_name}\n")
+        all_sources += (f"{source.source_id}. {source.notes}\n")
     return all_sources

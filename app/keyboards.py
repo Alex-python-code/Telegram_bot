@@ -1,13 +1,9 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
 
-main = InlineKeyboardMarkup(inline_keyboard = [
-    [InlineKeyboardButton(text = 'Каталог', callback_data='catalog')],
-    [InlineKeyboardButton(text = 'Корзина', callback_data='basket'), InlineKeyboardButton(text = 'Контакты', callback_data='contacts')]
-])
+
 
 settings = InlineKeyboardMarkup(inline_keyboard=[
-    [InlineKeyboardButton(text = 'Настроить предпочтения', callback_data='preferences'),
-     InlineKeyboardButton(text = "Обновить местоположение", callback_data="set_news_region")],
+    [InlineKeyboardButton(text = 'Настроить предпочтения', callback_data='preferences')],
     [InlineKeyboardButton(text="В главное меню", callback_data="main_menu")]
 ])
 
@@ -27,7 +23,7 @@ first_start = InlineKeyboardMarkup(inline_keyboard=[
 
 
 main_menu = ReplyKeyboardMarkup(keyboard = [
-    [KeyboardButton(text = "Последнние новости"), KeyboardButton(text = "Подписаться на рассылку")],
+    [KeyboardButton(text = "Новости"), KeyboardButton(text = "Подписаться на рассылку")],
     [KeyboardButton(text = "Live режим"), KeyboardButton(text = "Профиль")],
     [KeyboardButton(text = 'Настройки')]],
     resize_keyboard=True,
@@ -46,4 +42,16 @@ share_location = ReplyKeyboardMarkup(keyboard=[
     [KeyboardButton(text = "Oтказываюсь предоставлять")]],
     resize_keyboard=True,
     one_time_keyboard=True
+)
+
+news_dates = ReplyKeyboardMarkup(keyboard = [
+    [KeyboardButton(text = 'Сегодня')],
+    [KeyboardButton(text = 'Вчера')],
+    [KeyboardButton(text = 'Позавчера')]],
+    resize_keyboard=True)
+
+news_kb = ReplyKeyboardMarkup(keyboard = [
+    [KeyboardButton(text = 'Ещё новости')],
+    [KeyboardButton(text = 'В главное меню')]],
+    resize_keyboard=True
 )

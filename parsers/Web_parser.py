@@ -45,7 +45,7 @@ class TimeUtils:
         '''Функция для проверки совпадения времени новости и настоящего времени'''
         news_time = TimeUtils.get_news_time(news_block, html_time_element, html_time_class)
         formatted_news_time = TimeUtils.format_time(news_time)
-        now_time = int(datetime.datetime.now().strftime('%H')) - 21
+        now_time = int(datetime.datetime.now().strftime('%H')) - 1
         conclusion = int(formatted_news_time) == now_time
         print(f'formatted_news_time: {formatted_news_time}')
         print(f'now_time: {now_time}')
@@ -79,7 +79,7 @@ class Parser():
     def __init__(self, url, parent_html_news_element, parent_html_news_class,
                  html_news_element, html_news_class, sublink_element, sublink_class,
                  next_page_link_element, next_page_link_class, class_of_news_blocks, main_site,
-                 time_html_class, time_html_element):
+                 time_html_class, time_html_element, is_mass_media, source_name):
         """
         Атрибуты:
             url (str): URL главной страницы для парсинга.
@@ -114,11 +114,13 @@ class Parser():
         self._is_first_page = True
         self.exclude_word_in_news = ['фото:', 'изображение:', 'снимок:', 'кадр:', 'снял:']
         self.ai_model = 'gpt-5-nano'
-        self.assistant_text = 'это очень важно, сделав тег не по шаблону, всё сломается, конструкцию вывведи в самом начале. тег выведи в формате ---"тег"'
-        self.ai_system_text = 'уберите все лишнее и оставьте только самую суть и присвой один из тегов тексту Спортивные Политические Военные Научные Экономические Социальные Культурные. не использую никаких вводных конструкций, просто выведи сжатый текст'
+        self.assistant_text = 'Тег текста выведи в самом начале и в формате ---"тег" '
+        self.ai_system_text = 'Сожми текст, до 30-40 слов, на выходе должен быть красивый лаконочный текст. Присвой тексту один из тегов Спортивные Политические Военные Научные Экономические Социальные Культурные. не используй вводных конструкций, просто выведи сжатый текст.'
         self.ai_tokens_limit = 100
         self.json_array = []
         self.file_path = str(Path(__file__).parent) + '/result.jsonl'
+        self.is_mass_media = str(is_mass_media)
+        self.source_name = source_name
 
     
     def _get_full_link(self, main_site, required_page):
@@ -175,7 +177,9 @@ class Parser():
 
             data_for_ai_request = {
                 'model': self.ai_model,
-                'prompt': self.ai_system_text + self.assistant_text + news_text
+                'prompt': self.ai_system_text + self.assistant_text + news_text,
+                'is_mass_media': self.is_mass_media,
+                'source_name': self.source_name
             }
             self.json_array.append(data_for_ai_request)
             self._cnt += 1

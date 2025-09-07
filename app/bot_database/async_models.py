@@ -1,5 +1,5 @@
 from sqlalchemy import BigInteger, String, ForeignKey, Text
-from sqlalchemy.orm import DeclarativeBase, Mapped, sessionmaker, mapped_column, relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.ext.asyncio import AsyncAttrs, async_sessionmaker, create_async_engine
 
 engine = create_async_engine(url = 'sqlite+aiosqlite:///db.sqlite3')
@@ -31,11 +31,12 @@ class News(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     news_header = mapped_column(Text)
     news_body = mapped_column(Text)
-    source_url = mapped_column(Text)
+    source_name = mapped_column(Text)
     source_group: Mapped[int] = mapped_column() #Телеграм или интернет
     news_theme: Mapped[int] = mapped_column()
+    news_time: Mapped[int] = mapped_column()
+    news_date: Mapped[int] = mapped_column()
     news_region_id: Mapped[int] = mapped_column(ForeignKey('news_regions.region_id'))
-    news_datetime: Mapped[int] = mapped_column()
     
 class News_region(Base):
     __tablename__ = 'news_regions'
@@ -62,7 +63,8 @@ class News_source(Base):
     time_html_class = mapped_column(Text)
     time_html_element = mapped_column(Text)
     notes = mapped_column(Text)
-    
+    mass_media: Mapped[int] = mapped_column()
+
 class News_theme(Base):
     __tablename__ = 'news_themes'
     
