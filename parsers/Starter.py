@@ -48,7 +48,7 @@ class ParserStarter():
             for field in required_fields:
                 if not getattr(source_info, field, None):
                     print(f'Отсутствуют данные о ресурсе {source_info.source_url} в блоке {field}')
-                    return
+                    
 
             full_link = self.make_full_link(source_info.source_url, source_info.date_format)
             parser = Parser(url = full_link,

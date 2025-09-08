@@ -71,9 +71,8 @@ async def message_is_photo(message: Message):
 @router.message(F.text == 'Профиль')
 async def user_profile(message: Message):
     data = await dsrc.get_user_profile(message.from_user.id)
-    
+    encode_sources = {'Официальные': 1, 'Не официальные': 0, 'Оба источника': 2}
     await message.answer(f'Ваше имя: {data['user_name']}\n\
-Подписка на рассылку новостей: {data['mailing']}\n\
 Тип новостей: {data['news_type']}\n\
 Источники новостей: {data['news_sources']}\n\
 Исключённые источники: {data['exclude_news_sources']}')
@@ -233,7 +232,7 @@ async def preferences_two(message: Message, state: FSMContext):
     
     await state.update_data(source = encode_sources[message.text])
     await state.set_state(Set_preferences.news_types)
-    await message.answer(f'Выберите новостные темы которые Вам интересны.\n{tsrc.number_select_format}{await dsrc.all_news_themes()}',
+    await message.answer(f'Выберите новостные темы которые Вам интересны.\n\n{tsrc.number_select_format}{await dsrc.all_news_themes()}',
                         reply_markup=kb.go_to_main_menu)
     
 
@@ -245,32 +244,27 @@ async def preferences_three(message: Message, state: FSMContext):
 
     if not await dsrc.input_is_digit(message, all_news_sources):
         return
-    await state.update_data(news_types = message.text)
+    await state.update_data(news_types = await dsrc.del_repeated_values(((message.text).split())))
     await state.set_state(Set_preferences.exclude_news_sources)
 
     user_news_preferences = await state.get_data()
-    sources_encode = {'Официальные': 0, 'Не официальные': 1}
+    sources_encode = {'Официальные': 1, 'Не официальные': 0, 'Оба источника': 2}
 
-    if user_news_preferences['source'] == 'Официальные' or user_news_preferences["source"] == 'Не официальные':
-        await message.answer(f'Выберите новостные источники которые Вам не нравятся\n{tsrc.number_select_format}{await dsrc.all_news_sources(sources_encode[user_news_preferences['source']])}',
+    await message.answer(f'''Выберите новостные источники которые Вам НЕ нравятся\n                  
+{tsrc.number_select_format}{await dsrc.all_news_sources(user_news_preferences["source"])}''',
                              reply_markup=kb.go_to_main_menu)
-    else:
-        await message.answer(f'''Выберите новостные источники которые Вам не нравятся
-                             
-{tsrc.number_select_format}Официальные:
-{await dsrc.all_news_sources(sources_encode['Официальные'])}\n
-Не официальные:
-{await dsrc.all_news_sources(sources_encode['Не официальные'])}''',
-                             reply_markup=kb.go_to_main_menu)
+
     
 #@router.message(Set_preferences.exclude_news_sources, F.text)
 #Регион новосетей пользователя
 async def preferences_four(message: Message, state: FSMContext):
     user_news_preferences = await state.get_data()
-    if user_news_preferences['source'] == 'Оба источника':
+    if user_news_preferences['source'] == 2:
         exclude_news_sources_limit = 6
+        print(6)
     else:
-        exclude_news_sources_limit = 3
+        exclude_news_sources_limit = 4
+        print(f'exclude_news_sources_limit: {exclude_news_sources_limit}')
     if not await dsrc.input_is_digit(message, exclude_news_sources_limit):
         return
     await state.update_data(exclude_news_sources = message.text)
@@ -280,15 +274,15 @@ async def preferences_four(message: Message, state: FSMContext):
    
 
 @router.message(Set_preferences.exclude_news_sources)
-#Запись новостных предпочтений в бд
 async def preferences_five(message: Message, state: FSMContext):
+    '''Запись новостных предпочтений в бд'''
     await state.update_data(exclude_news_sources = message.text)
     user_news_preferences = await state.get_data()
 
-    if user_news_preferences['source'] == 'Оба источника':
+    if user_news_preferences['source'] == 2:
         exclude_news_sources_limit = 6
     else:
-        exclude_news_sources_limit = 3
+        exclude_news_sources_limit = 4
 
     if not await dsrc.input_is_digit(message, exclude_news_sources_limit):
         return

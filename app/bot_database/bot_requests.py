@@ -29,7 +29,7 @@ async def get_all_news_themes():
 
 async def get_all_news_sources(source_type):
     async with async_session() as session:
-        if source_type == "all":
+        if source_type == 2:
             return (await session.scalars(select(News_source))).all()
         return (await session.scalars(select(News_source).where(News_source.source_type == source_type))).all()
     

@@ -1,19 +1,24 @@
 import app.bot_database.bot_requests as rq
 
-async def input_digit_limit_check(digits: str, limit: int):
-    digits = digits.text.split(' ')
-    print(f'type {type(digits)}')
+async def input_digit_limit_check(digits, limit):
+    digits = digits.split(' ')
+    #print(f'type {type(digits)}')
     for digit in digits:
-        print(f'digit {digit}')
+        #print(f'digit {digit}')
         if int(digit) > limit:
+            #print(f'limit is {limit}')
+            print(int(digit) > limit)
             return False
     return True
 
 async def input_is_digit(message, limit):
-    if message.text.replace(' ', '').isdigit():
+    print(f'1 limit is {limit}')
+    user_message = ' '.join((message.text).split())
+    print(user_message)
+    if user_message.replace(' ', '').isdigit():
         if not limit:
             return True
-        elif await input_digit_limit_check(message, limit):
+        elif await input_digit_limit_check(user_message, limit):
             return True 
     await message.answer("Введите пожалуйста значения в корректном формате\nПример: 1 7 3")
     return False
@@ -57,12 +62,12 @@ async def get_user_profile(tg_id):
     
 async def all_news_sources(source_type):
     data = await rq.get_all_news_sources(source_type)
-    if source_type == "all":
-        cnt = 0
-        for source in data:
-            cnt += 1
-        return cnt
     all_sources = ''
     for source in data:
         all_sources += (f"{source.source_id}. {source.notes}\n")
     return all_sources
+
+async def del_repeated_values(message):
+    #data = [i for i in message]
+    data = sorted(set(message))
+    return (' '.join(map(str, data))).strip()
