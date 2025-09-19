@@ -179,7 +179,8 @@ class Parser():
                 'model': self.ai_model,
                 'prompt': self.ai_system_text + self.assistant_text + news_text,
                 'is_mass_media': self.is_mass_media,
-                'source_name': self.source_name
+                'source_name': self.source_name,
+                'time_interval': self.now_time_interval
             }
             self.json_array.append(data_for_ai_request)
             self._cnt += 1
@@ -235,7 +236,7 @@ class Parser():
             self._html_subpages_parser()
 
         print(f'Новостей всего {self._cnt}')
-        ai_module = AsyncAi(self.now_time_interval)
+        ai_module = AsyncAi()
         asyncio.run(ai_module.main(self.json_array))
         return True
 

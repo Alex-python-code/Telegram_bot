@@ -3,7 +3,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 from Web_parser import Parser
-import parsers.parser_database.parser_requests as rq
+import parsers.sites_parser.site_parser_database.parser_requests as rq
 
 from pathlib import Path
 from datetime import date

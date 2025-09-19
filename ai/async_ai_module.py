@@ -8,9 +8,8 @@ from config import AI_TOKEN
 
 class AsyncAi:
         
-    def __init__(self, now_time_interval):
+    def __init__(self):
         self.client = AsyncOpenAI(api_key = AI_TOKEN)
-        self.now_time_interval = now_time_interval
 
     async def make_ai_request(self, input_data):
         response = await self.client.chat.completions.create(
@@ -19,7 +18,8 @@ class AsyncAi:
         )
         return {'response': response.choices[0].message.content,
                 'is_mass_media': input_data['is_mass_media'],
-                'source_name': input_data['source_name']
+                'source_name': input_data['source_name'],
+                'time_interval': input_data['time_interval']
                 }
     
     async def main(self, list_of_tasks):
@@ -69,8 +69,8 @@ class AsyncAi:
             print(f'Текст успешно очищен от тегов')
             list_configured_for_db.append({'news_body': text_without_tags,
                                            'news_theme': encode_theme_tags[theme_tag_of_new],
-                                           'news_time': self.now_time_interval,
-                                           'news_date': 0,
+                                           'news_time': text['time_interval'],
+                                           'news_date': text['date_interval'],
                                            'mass_media': is_mass_media,
                                            'source_name': text['source_name']
                                            })
