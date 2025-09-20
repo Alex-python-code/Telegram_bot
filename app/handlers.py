@@ -3,7 +3,6 @@ from aiogram.filters import CommandStart, Command
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
-from asyncio import sleep
 
 import app.keyboards as kb
 import source.text_source as tsrc
@@ -55,7 +54,7 @@ async def cmd_start(message: Message, state: FSMContext):
 @router.callback_query(F.data == "main_menu")
 async def main_menu(callback: CallbackQuery, state: FSMContext):
     user_state = await state.get_state()
-    print(user_state)
+    # print(user_state)
     if user_state:
         await state.clear()
     await callback.answer("Меню открыто")
@@ -84,7 +83,6 @@ async def message_is_photo(message: Message):
 @router.message(F.text == "Профиль")
 async def user_profile(message: Message):
     data = await dsrc.get_user_profile(message.from_user.id)
-    encode_sources = {"Официальные": 1, "Не официальные": 0, "Оба источника": 2}
     await message.answer(
         f"Ваше имя: {data['user_name']}\n\
 Тип новостей: {data['news_type']}\n\
@@ -123,11 +121,12 @@ async def selecting_type_intervals(message: Message, state: FSMContext):
 @router.message(Viewing_news.select_time, F.text)
 async def selecting_hour(message: Message, state: FSMContext):
     """Выбор часа новостей"""
-    print(await state.get_state())
+    # print(await state.get_state())
 
     if await dsrc.input_is_digit(message, None):
-        await state.update_data(select_time=[hour for hour in message.text.split()])
+        await state.update_data(select_time=message.text.split())
     else:
+        await message.answer("это не время!")
         return
     await state.set_state(Viewing_news.user_news)
     await message.answer(
@@ -155,7 +154,7 @@ async def today_news(message: Message, state: FSMContext):
         await go_to_main_menu(message, state)
         return
 
-    if not message.text in ["Сегодня", "Вчера", "Позавчера", "Ещё новости"]:
+    if message.text not in ["Сегодня", "Вчера", "Позавчера", "Ещё новости"]:
         await message.answer(
             "Не корректный запрос!\n Выберите один из пунктов на клавиатуре"
         )
@@ -178,21 +177,17 @@ async def today_news(message: Message, state: FSMContext):
             user_news="",
         )
     else:
-        __viewing_data = await state.get_data()
-        await state.update_data(num_of_news=__viewing_data["num_of_news"] + 1)
+        _viewing_data = await state.get_data()
+        await state.update_data(num_of_news=_viewing_data["num_of_news"] + 1)
 
     news_viewing_state = await state.get_data()
     preferences = news_viewing_state["user_preferences"]
-    print(
-        (
-            f"user preferences: {preferences.news_sources, preferences.news_types, preferences.exclude_news_sources, 5, news_viewing_state['page_number'], news_viewing_state['select_day']}"
-        )
-    )
+    # print(f"user preferences: {preferences.news_sources, preferences.news_types, preferences.exclude_news_sources, 5, news_viewing_state['page_number'], news_viewing_state['select_day'], news_viewing_state["select_time"]}")
     if len(news_viewing_state["user_news"]) == 0:
-        print("get request")
+        # print("get request")
         today_news = await rq.get_news_for_user(
             preferences.news_sources,
-            preferences.news_types,
+            preferences.news_types.split(),
             preferences.exclude_news_sources,
             5,
             news_viewing_state["page_number"],
@@ -201,6 +196,7 @@ async def today_news(message: Message, state: FSMContext):
         )
         await state.update_data(user_news=today_news[0], page_number=today_news[1])
         news_viewing_state = await state.get_data()
+    # print(f'news_viewing_state["user_news"] = {news_viewing_state["user_news"]}')
     if not news_viewing_state["user_news"]:
         await message.answer("К сожалению, новости закончились или не были найдены :(")
         await go_to_main_menu(message, state)
@@ -237,7 +233,7 @@ async def set_news_region(callback: CallbackQuery, state: FSMContext):
 # @router.message(Set_only_news_region.only_news_region)
 # Запись в бд только региона новостей пользователя
 async def set_news_region(message: Message, state: FSMContext):
-    if not message.text.isdigit() or not int(message.text) in await dsrc.all_regions(
+    if not message.text.isdigit() or int(message.text) not in await dsrc.all_regions(
         "id"
     ):
         await message.answer(
@@ -246,7 +242,7 @@ async def set_news_region(message: Message, state: FSMContext):
         return
     await state.update_data(only_news_region=message.text)
     users_location = await state.get_data()
-    print(users_location["only_news_region"])
+    # print(users_location["only_news_region"])
     await rq.reset_users_region(users_location["only_news_region"])
     await state.clear()
     await message.answer("Ваш регион успешно обновлён")
@@ -263,16 +259,16 @@ async def preferences_one(callback: CallbackQuery, state: FSMContext):
 @router.message(Set_preferences.source, F.text)
 async def preferences_two(message: Message, state: FSMContext):
     """Установка новостных тем"""
-    encode_sources = {"Официальные": 1, "Не официальные": 0, "Оба источника": 2}
+    encode_sources = {"Официальные": 0, "Не официальные": 1, "Оба источника": 2}
 
-    if not message.text in encode_sources.keys():
+    if  message.text not in encode_sources.keys():
         await message.answer("Такого источника нет")
         return
 
     await state.update_data(source=encode_sources[message.text])
     await state.set_state(Set_preferences.news_types)
     await message.answer(
-        f"Выберите новостные темы которые Вам интересны.\n\nНапишите через пробел и без разделительных знаков.\nПример: 1 7 3\n\nСпортивные\nПолитически\nОбразование\nНаучные\nЭкономические\nСоциальные\nКультурные\nПрограммирование",
+        "Выберите новостные темы которые Вам интересны.\n\nНапишите через пробел и без разделительных знаков.\nПример: 1 7 3\n\n1. Спортивные\n2. Политически\n3. Образование\n4. Научные\n5. Экономические\n6. Социальные\n7. Культурные\n8. Программирование",
         reply_markup=kb.go_to_main_menu,
     )
 
@@ -280,7 +276,7 @@ async def preferences_two(message: Message, state: FSMContext):
 @router.message(Set_preferences.news_types, F.text)
 async def preferences_three(message: Message, state: FSMContext):
     """Исключение источников новостей"""
-    all_news_sources = await rq.get_count_of_news_sources()
+    all_news_sources = 8
     # print(all_news_sources)
 
     if not await dsrc.input_is_digit(message, all_news_sources):
@@ -291,32 +287,10 @@ async def preferences_three(message: Message, state: FSMContext):
     await state.set_state(Set_preferences.exclude_news_sources)
 
     user_news_preferences = await state.get_data()
-    sources_encode = {"Официальные": 1, "Не официальные": 0, "Оба источника": 2}
 
     await message.answer(
         f"""Выберите новостные источники которые Вам НЕ нравятся\n                  
 {tsrc.number_select_format}{await dsrc.all_news_sources(user_news_preferences["source"])}""",
-        reply_markup=kb.go_to_main_menu,
-    )
-
-
-# @router.message(Set_preferences.exclude_news_sources, F.text)
-# Регион новосетей пользователя
-async def preferences_four(message: Message, state: FSMContext):
-    user_news_preferences = await state.get_data()
-    if user_news_preferences["source"] == 2:
-        exclude_news_sources_limit = 6
-        print(6)
-    else:
-        exclude_news_sources_limit = 4
-        print(f"exclude_news_sources_limit: {exclude_news_sources_limit}")
-    if not await dsrc.input_is_digit(message, exclude_news_sources_limit):
-        return
-    await state.update_data(exclude_news_sources=message.text)
-    await state.set_state(Set_preferences.news_region)
-    await message.answer(
-        f"Для персонализации новостей выберите свой регион.\nЕсли ваш регион отстуствует, то можете выбрать 0 (Россия)\n\n\
-{await dsrc.all_regions('id and name')}\nВведите одно число без разделительных знаков\nПример: 18",
         reply_markup=kb.go_to_main_menu,
     )
 
@@ -328,9 +302,9 @@ async def preferences_five(message: Message, state: FSMContext):
     user_news_preferences = await state.get_data()
 
     if user_news_preferences["source"] == 2:
-        exclude_news_sources_limit = 6
-    else:
         exclude_news_sources_limit = 4
+    else:
+        exclude_news_sources_limit = 6
 
     if not await dsrc.input_is_digit(message, exclude_news_sources_limit):
         return

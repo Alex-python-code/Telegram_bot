@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import os
 from logging.handlers import RotatingFileHandler
 
 from aiogram import Bot, Dispatcher
@@ -16,31 +15,23 @@ async def main():
     await async_main()
     dp.include_router(router)
     await dp.start_polling(bot)
-    
+
 
 if __name__ == "__main__":
-    log_dir = "/home/alexlinux/Рабочий стол/Progra/Python/Telegram_bot"
-    os.makedirs(log_dir, exist_ok=True)
-    log_file = os.path.join(log_dir, "newsbot.log")
+    handler = RotatingFileHandler("app.log", maxBytes=1_000_000, backupCount=6)
 
-    # Формат логов
-    formatter = logging.Formatter(
-        "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        handlers=[
+            handler,
+            logging.FileHandler("app.log", encoding="utf-8"),
+            logging.StreamHandler(),
+        ],
     )
-
-    # Настройка root-логгера
-    logging.basicConfig(level=logging.INFO, handlers=[])
-
-    root_logger = logging.getLogger()
-
-    # Хэндлер для файла (с ротацией)
-    file_handler = RotatingFileHandler(
-        log_file, maxBytes=5*1024*1024, backupCount=5, encoding="utf-8"
-    )
-    file_handler.setFormatter(formatter)
-    root_logger.addHandler(file_handler)
+    logger = logging.getLogger(__name__)
 
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print('Exit')
+        logger.critical("Бот не смог стартовать")
