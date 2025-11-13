@@ -8,7 +8,7 @@ import logging
 
 from aiogram import Router
 from aiogram.types import Message
-from parsers.TG_parser.app.parser_database.tg_parser_requests import get_source_info
+from .parser_database.tg_parser_requests import get_source_info
 
 import datetime
 
@@ -57,8 +57,10 @@ ai_module = AsyncAi()
 class Handlers:
     @router.channel_post()
     async def parsing_chanels_posts(message: Message):
-        # print(f'Новое сообщение в канале {message.chat.title}, id: {message.chat.id}')
-        # print(f'message.text: {message.caption} message.date: {message.date}')
+        logger.info(
+            f"Новое сообщение в канале {message.chat.title}, id: {message.chat.id}"
+        )
+        logger.info(f"message.text: {message.caption} message.date: {message.date}")
         chanel_post = message.caption
         if not chanel_post:
             chanel_post = message.text

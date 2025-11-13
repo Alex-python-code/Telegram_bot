@@ -1,5 +1,5 @@
 import app.bot_database.bot_requests as rq
-
+from async_lru import alru_cache
 
 async def input_digit_limit_check(digits, limit):
     digits = digits.split(" ")
@@ -69,12 +69,12 @@ async def get_user_profile(tg_id):
         "news_region": preferences.news_region,
     }
 
-
+@alru_cache()
 async def all_news_sources(source_type):
     data = await rq.get_all_news_sources(source_type)
-    all_sources = ""
+    all_sources = {}
     for source in data:
-        all_sources += f"{source.source_id}. {source.notes}\n"
+        all_sources[source.source_id] = source.notes
     return all_sources
 
 

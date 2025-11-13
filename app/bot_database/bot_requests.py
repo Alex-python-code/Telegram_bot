@@ -1,5 +1,5 @@
-from app.bot_database.async_models import async_session
-from app.bot_database.async_models import (
+from app.async_models import async_session
+from app.async_models import (
     User,
     User_preferences,
     News,
@@ -141,9 +141,13 @@ async def get_users_news_preferences(tg_id):
         return preferences
 
 
-async def get_news_for_user(
-    mass_media, news_themes, exclude_sources, limit, page_number, day, time
-):
+async def get_news_for_user(mass_media, news_themes, exclude_sources, limit, page_number, day, time):
+    try:
+        exclude_sources = list(map(int, exclude_sources))
+        news_themes = list(map(int, news_themes))
+    except Exception as e:
+        logger.error(f'Ошибка при изменении типа данных {e}')
+
     if len(time) == 0:
         time = [i for i in range(25)]
     async with async_session() as session:
@@ -154,9 +158,10 @@ async def get_news_for_user(
                     .where(
                         News.news_date == day,
                         News.news_time.in_(time),
-                        News.source_name != exclude_sources,
-                        News.news_theme == news_themes,
+                        News.source_name.notin_(exclude_sources),
+                        News.news_theme.in_(news_themes),
                     )
+                    .order_by(News.id.desc())
                     .limit(limit)
                     .offset(page_number * limit)
                 )
@@ -169,9 +174,10 @@ async def get_news_for_user(
                         News.news_date == day,
                         News.news_time.in_(time),
                         News.source_group == mass_media,
-                        News.source_name != exclude_sources,
+                        News.source_name.notin_(exclude_sources),
                         News.news_theme.in_(news_themes),
                     )
+                    .order_by(News.id.desc())
                     .limit(limit)
                     .offset(page_number * limit)
                 )

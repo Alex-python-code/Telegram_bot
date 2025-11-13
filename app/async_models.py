@@ -2,7 +2,21 @@ from sqlalchemy import BigInteger, String, ForeignKey, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.ext.asyncio import AsyncAttrs, async_sessionmaker, create_async_engine
 
-engine = create_async_engine(url="sqlite+aiosqlite:///db.sqlite3")
+from dotenv import load_dotenv
+import os
+
+
+load_dotenv(dotenv_path="/home/alexlinux/Рабочий стол/Progra/Python/Telegram_bot/secret.env")
+
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_HOST = os.getenv("DB_HOST")
+DB_PORT = os.getenv("DB_PORT")
+DB_NAME = os.getenv("DB_NAME")
+
+engine = create_async_engine(
+    url=f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+)
 
 async_session = async_sessionmaker(engine)
 
@@ -22,10 +36,10 @@ class User(Base):
 class User_preferences(Base):
     __tablename__ = "users_preferences"
 
-    tg_id = mapped_column(BigInteger, ForeignKey("users.tg_id"), primary_key=True)
-    news_sources: Mapped[int] = mapped_column(ForeignKey("news_sources.source_id"))
-    news_types: Mapped[int] = mapped_column(ForeignKey("news_sources.source_id"))
-    exclude_news_sources: Mapped[int] = mapped_column(nullable=True)
+    tg_id = mapped_column(BigInteger, primary_key=True)
+    news_sources: Mapped[int] = mapped_column()
+    news_types: Mapped[str] = mapped_column()
+    exclude_news_sources: Mapped[str] = mapped_column(nullable=True)
     news_region: Mapped[str] = mapped_column(String(50), nullable=True)
 
 
@@ -35,7 +49,7 @@ class News(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     news_header = mapped_column(Text)
     news_body = mapped_column(Text)
-    source_name = mapped_column(Text)
+    source_name: Mapped[int] = mapped_column()
     source_group: Mapped[int] = mapped_column()  # Телеграм или интернет
     news_theme: Mapped[int] = mapped_column()
     news_time: Mapped[int] = mapped_column()

@@ -1,5 +1,5 @@
-from ai.ai_database.sync_ai_models import Session
-from ai.ai_database.sync_ai_models import News
+from db_models.sync_models import Session
+from db_models.sync_models import News
 
 import logging
 
@@ -17,7 +17,7 @@ def send_compressed_text(list_of_texts):
                 news_time=list_of_texts["news_time"],
                 news_date=list_of_texts["news_date"],
                 source_group=list_of_texts["mass_media"],
-                source_name=list_of_texts["source_name"],
+                source_name=int(list_of_texts["source_name"]),
             )
         )
         try:

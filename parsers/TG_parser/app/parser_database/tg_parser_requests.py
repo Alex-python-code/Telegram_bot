@@ -3,8 +3,8 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent))
 
-from .async_model import News_source
-from .async_model import async_session
+from db_models.async_models import News_source
+from db_models.async_models import async_session
 from sqlalchemy import select
 
 import logging

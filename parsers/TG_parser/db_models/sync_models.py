@@ -1,13 +1,31 @@
-from sqlalchemy import BigInteger, String, ForeignKey, Text
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-from sqlalchemy.ext.asyncio import AsyncAttrs, async_sessionmaker, create_async_engine
+from sqlalchemy import BigInteger, String, Text
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    sessionmaker,
+    mapped_column,
+)
+from sqlalchemy import create_engine
 
-engine = create_async_engine(url="sqlite+aiosqlite:///db.sqlite3")
+from dotenv import load_dotenv
+import os
+import pathlib
 
-async_session = async_sessionmaker(engine)
+
+load_dotenv(dotenv_path="/home/alexlinux/Рабочий стол/Progra/Python/Telegram_bot/secret.env")
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_HOST = os.getenv("DB_HOST")
+DB_PORT = os.getenv("DB_PORT")
+DB_NAME = os.getenv("DB_NAME")
+
+engine = create_engine(
+    url=f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+)
+Session = sessionmaker(engine)
 
 
-class Base(AsyncAttrs, DeclarativeBase):
+class Base(DeclarativeBase):
     pass
 
 
@@ -15,16 +33,16 @@ class User(Base):
     __tablename__ = "users"
 
     tg_id = mapped_column(BigInteger, primary_key=True)
-    user_name = mapped_column(Text)
+    user_name = mapped_column(Text, nullable=True)
     subscrible_for_mailing: Mapped[bool] = mapped_column(nullable=True)
 
 
 class User_preferences(Base):
     __tablename__ = "users_preferences"
 
-    tg_id = mapped_column(BigInteger, ForeignKey("users.tg_id"), primary_key=True)
-    news_sources: Mapped[int] = mapped_column(ForeignKey("news_sources.source_id"))
-    news_types: Mapped[int] = mapped_column(ForeignKey("news_sources.source_id"))
+    tg_id = mapped_column(BigInteger, primary_key=True)
+    news_sources: Mapped[int] = mapped_column()
+    news_types: Mapped[int] = mapped_column()
     exclude_news_sources: Mapped[int] = mapped_column(nullable=True)
     news_region: Mapped[str] = mapped_column(String(50), nullable=True)
 
@@ -35,7 +53,7 @@ class News(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     news_header = mapped_column(Text)
     news_body = mapped_column(Text)
-    source_name = mapped_column(Text)
+    source_name: Mapped[int] = mapped_column()
     source_group: Mapped[int] = mapped_column()  # Телеграм или интернет
     news_theme: Mapped[int] = mapped_column()
     news_time: Mapped[int] = mapped_column()
@@ -77,3 +95,7 @@ class News_theme(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     theme_name: Mapped[str] = mapped_column(String(20))
+
+
+def sync_main():
+    Base.metadata.create_all(engine)

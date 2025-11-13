@@ -49,7 +49,7 @@ first_start = InlineKeyboardMarkup(
 main_menu = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="Новости")],
-        [KeyboardButton(text="Профиль")],
+        [KeyboardButton(text="Архив")],
         [KeyboardButton(text="Настройки")],
     ],
     resize_keyboard=True,

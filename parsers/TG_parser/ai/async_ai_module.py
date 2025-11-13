@@ -4,9 +4,14 @@ import re
 
 import ai.ai_database.ia_requests as ia_rq
 
-from config import AI
+from dotenv import load_dotenv
+import os
 
 logger = logging.getLogger(__name__)
+
+
+load_dotenv()
+AI = os.getenv("AI")
 
 
 class AsyncAi:
@@ -31,21 +36,14 @@ class AsyncAi:
             ai_response = await self.make_ai_request(task)
         except Exception as e:
             logger.error(f"Ошибка при запросе в ИИ: {e}")
-        # try:
-        # ai_responses = await asyncio.gather(*tasks)
-        # except Exception as e:
-        #    print(f"Ошибка при запускке задач: {e}")
-        #    return False
         if ai_response:
             self.find_tags(ai_response)
         else:
             logger.error("Нет ответов от ИИ")
-            # print(ai_response)
             return False
         return ai_response
 
     def find_tags(self, text):
-        # for text in list_of_texst:
         if text["response"] == "False":
             logger.info("ИИ вернул False, пропускаю")
             return
@@ -67,17 +65,13 @@ class AsyncAi:
         except Exception as e:
             logger.exception(f"Тег не найден, пропускаю новость. Ошибка: {e}")
             return
-        # print(f'Тип файла text{type(text)}')
         try:
             text_without_tags = text["response"].replace(
                 theme_tag_of_new_raw.group(0), ""
             )
         except Exception as e:
-            # print(f"{theme_tag_of_new_raw.group(0)} удалён из текста")
             logger.warning(f"Ошибка при удалении тега из текста: {e}")
-            # print(f"Исходный текст: {text['response']}")
             return
-        # print(f"Текст успешно очищен от тегов")
         configured_for_db = {
             "news_body": text_without_tags,
             "news_theme": encode_theme_tags[theme_tag_of_new],
@@ -86,7 +80,7 @@ class AsyncAi:
             "mass_media": is_mass_media,
             "source_name": text["source_name"],
         }
-        # print(f"Сформирован список для записи в базу")
+        logger.info(f'{type(text["source_name"])}, {text["source_name"]}')
         logger.info("Запускаю запись в базу")
         if len(configured_for_db) == 0:
             logger.warning("Новости отсутствуют, записывать не чего")

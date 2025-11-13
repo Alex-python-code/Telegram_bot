@@ -4,8 +4,13 @@ from logging.handlers import RotatingFileHandler
 
 from aiogram import Bot, Dispatcher
 from app.handlers import router
-from app.bot_database.async_models import async_main
-from config import TOKEN
+from app.async_models import async_main
+
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+TOKEN = os.getenv("TOKEN")
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
@@ -23,11 +28,7 @@ if __name__ == "__main__":
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        handlers=[
-            handler,
-            logging.FileHandler("app.log", encoding="utf-8"),
-            logging.StreamHandler(),
-        ],
+        handlers=[handler, logging.FileHandler("app.log", encoding="utf-8")],
     )
     logger = logging.getLogger(__name__)
 
