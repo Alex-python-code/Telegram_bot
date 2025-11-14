@@ -46,10 +46,13 @@ class Reg(StatesGroup):
 async def cmd_start(message: Message, state: FSMContext):
     if await rq.is_user_first(message.from_user.id):
         await rq.reg_user(message.from_user.id, message.from_user.first_name)
-        await message.answer("""Здравствуйте!
+        await message.answer(
+            """Здравствуйте!
 Рад приветствовать тебя в этом новостном боте.
 Сейчас Вы можете настроить свои новостные предпочтения или сразу перейти в основное меню
-""", reply_markup=kb.first_start)
+""",
+            reply_markup=kb.first_start,
+        )
     else:
         await state.clear()
         await message.reply(
@@ -263,7 +266,7 @@ async def preferences_three(message: Message, state: FSMContext):
     # print(all_news_sources)
     if not await dsrc.input_is_digit(message, all_news_sources):
         return
-    
+
     await state.update_data(
         news_types=await dsrc.del_repeated_values(((message.text).split()))
     )
@@ -271,10 +274,10 @@ async def preferences_three(message: Message, state: FSMContext):
 
     user_news_preferences = await state.get_data()
     all_sources = await dsrc.all_news_sources(user_news_preferences["source"])
-    all_sources_in_str = '0. Ничего не отключать\n'
+    all_sources_in_str = "0. Ничего не отключать\n"
 
     for key, value in all_sources.items():
-        all_sources_in_str += f'{key}. {value}\n'
+        all_sources_in_str += f"{key}. {value}\n"
 
     await message.answer(
         f"Отключить новости из:\n\nПример записи: 1 7 3\n\n{all_sources_in_str}",
@@ -287,13 +290,15 @@ async def preferences_five(message: Message, state: FSMContext):
     """Запись новостных предпочтений в бд"""
 
     if message.text == "0":
-        await state.update_data(exclude_news_sources='0')
+        await state.update_data(exclude_news_sources="0")
     else:
         await state.update_data(exclude_news_sources=message.text)
 
     user_news_preferences = await state.get_data()
 
-    exclude_news_sources_limit = await dsrc.all_news_sources(user_news_preferences["source"])
+    exclude_news_sources_limit = await dsrc.all_news_sources(
+        user_news_preferences["source"]
+    )
 
     if not await dsrc.input_is_digit(message, len(exclude_news_sources_limit)):
         return

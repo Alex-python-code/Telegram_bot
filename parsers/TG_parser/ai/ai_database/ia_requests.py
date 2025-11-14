@@ -1,3 +1,8 @@
+import sys
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).parent.parent))
+
 from db_models.sync_models import Session
 from db_models.sync_models import News
 

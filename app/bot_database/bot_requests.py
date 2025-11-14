@@ -141,12 +141,14 @@ async def get_users_news_preferences(tg_id):
         return preferences
 
 
-async def get_news_for_user(mass_media, news_themes, exclude_sources, limit, page_number, day, time):
+async def get_news_for_user(
+    mass_media, news_themes, exclude_sources, limit, page_number, day, time
+):
     try:
         exclude_sources = list(map(int, exclude_sources))
         news_themes = list(map(int, news_themes))
     except Exception as e:
-        logger.error(f'Ошибка при изменении типа данных {e}')
+        logger.error(f"Ошибка при изменении типа данных {e}")
 
     if len(time) == 0:
         time = [i for i in range(25)]

@@ -2,7 +2,7 @@ import logging
 from openai import AsyncOpenAI
 import re
 
-import ai.ai_database.ia_requests as ia_rq
+from .ai_database.ia_requests import send_compressed_text
 
 from dotenv import load_dotenv
 import os
@@ -80,9 +80,9 @@ class AsyncAi:
             "mass_media": is_mass_media,
             "source_name": text["source_name"],
         }
-        logger.info(f'{type(text["source_name"])}, {text["source_name"]}')
+        logger.info(f"{type(text['source_name'])}, {text['source_name']}")
         logger.info("Запускаю запись в базу")
         if len(configured_for_db) == 0:
             logger.warning("Новости отсутствуют, записывать не чего")
             return
-        ia_rq.send_compressed_text(configured_for_db)
+        send_compressed_text(configured_for_db)

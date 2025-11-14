@@ -1,4 +1,4 @@
-from sqlalchemy import BigInteger, String, ForeignKey, Text
+from sqlalchemy import BigInteger, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.ext.asyncio import AsyncAttrs, async_sessionmaker, create_async_engine
 
@@ -6,7 +6,9 @@ from dotenv import load_dotenv
 import os
 
 
-load_dotenv(dotenv_path="/home/alexlinux/Рабочий стол/Progra/Python/Telegram_bot/secret.env")
+load_dotenv(
+    dotenv_path="/home/alexlinux/Рабочий стол/Progra/Python/Telegram_bot/secret.env"
+)
 
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")

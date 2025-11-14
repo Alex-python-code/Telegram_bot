@@ -1,6 +1,7 @@
 import app.bot_database.bot_requests as rq
 from async_lru import alru_cache
 
+
 async def input_digit_limit_check(digits, limit):
     digits = digits.split(" ")
     # print(f'type {type(digits)}')
@@ -68,6 +69,7 @@ async def get_user_profile(tg_id):
         "exclude_news_sources": preferences.exclude_news_sources,
         "news_region": preferences.news_region,
     }
+
 
 @alru_cache()
 async def all_news_sources(source_type):

@@ -1,6 +1,6 @@
 FROM python:3.13.5-slim
 
-WORKDIR /bot
+WORKDIR /front-bot
 
 COPY requirements.txt .
 

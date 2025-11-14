@@ -9,10 +9,9 @@ from sqlalchemy import create_engine
 
 from dotenv import load_dotenv
 import os
-import pathlib
 
 
-load_dotenv(dotenv_path="/home/alexlinux/Рабочий стол/Progra/Python/Telegram_bot/secret.env")
+load_dotenv()
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_HOST = os.getenv("DB_HOST")
