@@ -9,6 +9,7 @@ import app.def_source as dsrc
 import app.bot_database.bot_requests as rq
 
 import logging
+from datetime import date
 
 
 logger = logging.getLogger(__name__)
@@ -45,7 +46,7 @@ class Reg(StatesGroup):
 @router.message(CommandStart())
 async def cmd_start(message: Message, state: FSMContext):
     if await rq.is_user_first(message.from_user.id):
-        await rq.reg_user(message.from_user.id, message.from_user.first_name)
+        await rq.reg_user(message.from_user.id, message.from_user.first_name, date.today().strftime("%d/%m/%Y"))
         await message.answer(
             """Здравствуйте!
 Рад приветствовать тебя в этом новостном боте.

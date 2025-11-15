@@ -10,6 +10,7 @@ from sqlalchemy import create_engine
 from dotenv import load_dotenv
 import os
 import logging
+from datetime import date
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +39,7 @@ class User(Base):
 
     tg_id = mapped_column(BigInteger, primary_key=True)
     user_name = mapped_column(Text, nullable=True)
-    subscrible_for_mailing: Mapped[bool] = mapped_column(nullable=True)
+    reg_date: Mapped[date] = mapped_column()
 
 
 class User_preferences(Base):

@@ -71,9 +71,9 @@ async def get_count_of_news_sources():
         return await session.scalar(select(func.count(News_theme.id)))
 
 
-async def reg_user(tg_id, user_name):
+async def reg_user(tg_id, user_name, reg_date):
     async with async_session() as session:
-        session.add(User(tg_id=tg_id, user_name=user_name))
+        session.add(User(tg_id=tg_id, user_name=user_name, reg_date = reg_date))
         await session.commit()
 
 
