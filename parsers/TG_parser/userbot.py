@@ -23,12 +23,12 @@ PARSER_HASH = os.getenv("PARSER_HASH")
 PHONE_NUM = os.getenv("PHONE_NUM")
 
 
-logger = logging.getLogger(__name__)
-
 app = Client(
-    "parser", PARSER_ID, PARSER_HASH, phone_number=PHONE_NUM
+    "parser", 
+    api_id=PARSER_ID,
+    api_hash=PARSER_HASH,
+    phone_number=PHONE_NUM
 )
-
 
 
 class AiUtils:
@@ -52,9 +52,13 @@ class AiUtils:
 
 ai_module = AsyncAi()
 
+@app.on_message(filters = filters.private)
+async def private_answer(client: Client, message: Message):
+    logger.info("Сообщение в лс")
+    await message.reply("Бот запущен и успешно работает")
 
-@app.on_message(filters.channel)
-async def parsing_chanels_posts(client, message: Message):
+@app.on_message(filters = filters.channel)
+async def parsing_chanels_posts(client: Client, message: Message):
     chat = message.chat
     text = message.caption or message.text
 
@@ -67,25 +71,27 @@ async def parsing_chanels_posts(client, message: Message):
         text, chat.title, str(message.date.strftime("%H"))
     )
     # print('Отправка новости в ИИ')
+    logger.info("Отправка запроса в ИИ")
     await ai_module.main(prompt)
 
 
 async def main():
     async with app:
-        logger.info("Юзер бот запущен и авторизован")
+        
         await asyncio.Future()
-
+        logger.info("Юзер бот запущен и авторизован")
 
 if __name__ == "__main__":
-    handler = RotatingFileHandler("app.log", maxBytes=1_000_000, backupCount=6)
+    handler = RotatingFileHandler("userbot.log", maxBytes=1_000_000, backupCount=6)
 
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        handlers=[handler, logging.FileHandler("app.log", encoding="utf-8")],
+        handlers=[handler],
     )
     logger = logging.getLogger(__name__)
     try:
-        asyncio.run(main())
+        app.run()
+        logger.info("Юзер бот запущен и авторизован")
     except KeyboardInterrupt:
         logger.critical("Парсер не смог стартовать")

@@ -4,11 +4,12 @@ from sqlalchemy.ext.asyncio import AsyncAttrs, async_sessionmaker, create_async_
 
 from dotenv import load_dotenv
 import os
+import logging
 
 
-load_dotenv(
-    dotenv_path="/home/alexlinux/Рабочий стол/Progra/Python/Telegram_bot/secret.env"
-)
+logger = logging.getLogger(__name__)
+
+load_dotenv()
 
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
@@ -16,12 +17,13 @@ DB_HOST = os.getenv("DB_HOST")
 DB_PORT = os.getenv("DB_PORT")
 DB_NAME = os.getenv("DB_NAME")
 
-engine = create_async_engine(
-    url=f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-)
-
-async_session = async_sessionmaker(engine)
-
+try:
+    engine = create_async_engine(
+        url=f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    )
+    async_session = async_sessionmaker(engine)
+except Exception as e:
+    logger.critical(f'Не удалось подключиться к дб в async_models: {e}')
 
 class Base(AsyncAttrs, DeclarativeBase):
     pass

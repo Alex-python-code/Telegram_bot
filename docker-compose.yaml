@@ -4,7 +4,6 @@ services:
     build:
       context: .
     restart: always
-    network_mode: "host"
     environment:
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
@@ -14,6 +13,8 @@ services:
       TOKEN: ${TOKEN}
     volumes:
       - app-data:/app/data
+    networks:
+      - bot-network
 
 
   news-parser:
@@ -21,7 +22,6 @@ services:
     build:
       context: ./parsers/TG_parser/
     restart: always
-    network_mode: "host"
     environment:
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
@@ -31,6 +31,12 @@ services:
       PARSER_ID: ${PARSER_ID}
       PARSER_HASH: ${PARSER_HASH}
       AI: ${AI}
+    networks:
+      - bot-network
 
 volumes:
   app-data:
+
+networks:
+  bot-network:
+    driver: bridge
