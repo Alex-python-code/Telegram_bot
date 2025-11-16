@@ -13,10 +13,10 @@ logger = logging.getLogger(__name__)
 cash = {}
 
 
-async def get_source_info(source_name):
+async def get_source_info(source_id):
     global cash
-    if source_name in cash:
-        return cash[source_name]
+    if source_id in cash:
+        return cash[source_id]
 
     if len(cash) >= 20:
         cash = {}
@@ -24,12 +24,12 @@ async def get_source_info(source_name):
     async with async_session() as session:
         try:
             source = await session.scalar(
-                select(News_source).where(News_source.notes == source_name)
+                select(News_source).where(News_source.notes == source_id)
             )
         except Exception as e:
             logger.error(f"Ошибка при запросе информации об источнике в бд: {e}")
             return False
 
-        cash[source_name] = source
+        cash[source_id] = source
 
         return source

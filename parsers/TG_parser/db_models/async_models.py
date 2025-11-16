@@ -79,6 +79,7 @@ class News_source(Base):
     source_type: Mapped[int] = mapped_column()
     notes = mapped_column(Text)
     mass_media: Mapped[int] = mapped_column()
+    chat_id = mapped_column(BigInteger)
 
 
 class News_theme(Base):
