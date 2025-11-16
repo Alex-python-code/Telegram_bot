@@ -32,6 +32,7 @@ class AsyncAi:
         }
 
     async def main(self, task):
+        ai_response = {}
         try:
             ai_response = await self.make_ai_request(task)
         except Exception as e:

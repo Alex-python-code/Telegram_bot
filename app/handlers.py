@@ -105,9 +105,11 @@ async def set_mailing_time(message: Message, state: FSMContext):
             "Это главное меню\nЗдесь вы можете вабрать интересующие разделы",
             reply_markup=kb.main_menu,
         )
+        
         return
 
     await message.answer("Данные успешно обновлены", reply_markup=kb.main_menu)
+    await state.clear()
 
 
 @router.message(F.text == "Как дела?")
