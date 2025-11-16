@@ -81,7 +81,6 @@ class AsyncAi:
             "mass_media": is_mass_media,
             "source_name": text["source_name"],
         }
-        logger.info(f"{type(text['source_name'])}, {text['source_name']}")
         logger.info("Запускаю запись в базу")
         if len(configured_for_db) == 0:
             logger.warning("Новости отсутствуют, записывать не чего")

@@ -28,7 +28,7 @@ async def get_source_info(source_name):
             )
         except Exception as e:
             logger.error(f"Ошибка при запросе информации об источнике в бд: {e}")
-            return
+            return False
 
         cash[source_name] = source
 

@@ -32,6 +32,7 @@ services:
       PARSER_ID: ${PARSER_ID}
       PARSER_HASH: ${PARSER_HASH}
       AI: ${AI}
+      TZ: Europe/Samara
     networks:
       - bot-network
 

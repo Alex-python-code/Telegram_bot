@@ -34,6 +34,8 @@ class AiUtils:
         ai_system_text = "Сожми текст, до 30-50 слов, на выходе должен быть красивый лаконочный текст. Если текст является рекламой, а не новостью или просто не имеет смысла, в ответ верни False вместо сжатого текста. Присвой тексту один из тегов Спортивные Политические Образование Научные Экономические Социальные Культурные. не используй вводных конструкций, просто выведи сжатый текст."
         source_info = await get_source_info(source_name)
 
+        if not source_info:
+            return False
         data_for_ai_request = {
             "model": ai_model,
             "prompt": ai_system_text + assistant_text + news_text,
@@ -67,6 +69,9 @@ async def parsing_chanels_posts(client: Client, message: Message):
     prompt = await AiUtils.create_prompt(
         text, chat.title, str(message.date.strftime("%H"))
     )
+    if not prompt:
+        logger.error("Не удалось создать промт для ии")
+        return
     # print('Отправка новости в ИИ')
     logger.info("Отправка запроса в ИИ")
     await ai_module.main(prompt)
