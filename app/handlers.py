@@ -46,7 +46,7 @@ class Reg(StatesGroup):
 @router.message(CommandStart())
 async def cmd_start(message: Message, state: FSMContext):
     if await rq.is_user_first(message.from_user.id):
-        await rq.reg_user(message.from_user.id, message.from_user.first_name, date.today().strftime("%d/%m/%Y"))
+        await rq.reg_user(message.from_user.id, message.from_user.first_name, date.today())
         await message.answer(
             """Здравствуйте!
 Рад приветствовать тебя в этом новостном боте.
@@ -124,7 +124,7 @@ async def news_time_interval(message: Message, state: FSMContext):
 @router.message(Viewing_news.select_time_interval, F.text == "За час")
 async def selecting_type_intervals(message: Message, state: FSMContext):
     await message.answer(
-        "Напишите час (или часы) за которые вы хотите посмотреть новости. Пишите время по МСК\nПример: 1 18 19 17"
+        "Напишите час (или часы) за которые вы хотите посмотреть новости. Пишите время по МСК\nПример: 1 12 8"
     )
     await state.set_state(Viewing_news.select_time)
 
@@ -217,6 +217,9 @@ async def today_news(message: Message, state: FSMContext):
             news_viewing_state["select_day"],
             news_viewing_state["select_time"],
         )
+        if today_news == False:
+            await message.answer("Приносим свои извинения, на сервере произошла ошибка. Попробуйте позже")
+            return
         await state.update_data(user_news=today_news[0], page_number=today_news[1])
         news_viewing_state = await state.get_data()
     if not news_viewing_state["user_news"]:

@@ -144,45 +144,54 @@ async def get_users_news_preferences(tg_id):
 async def get_news_for_user(
     mass_media, news_themes, exclude_sources, limit, page_number, day, time
 ):
+    
     try:
         exclude_sources = list(map(int, exclude_sources))
         news_themes = list(map(int, news_themes))
+        time = list(map(int, time))
     except Exception as e:
         logger.error(f"Ошибка при изменении типа данных {e}")
-
     if len(time) == 0:
         time = [i for i in range(25)]
     async with async_session() as session:
         if mass_media == 2:
-            news = (
-                await session.scalars(
-                    select(News)
-                    .where(
-                        News.news_date == day,
-                        News.news_time.in_(time),
-                        News.source_name.notin_(exclude_sources),
-                        News.news_theme.in_(news_themes),
+            try:
+                news = (
+                    await session.scalars(
+                        select(News)
+                        .where(
+                            News.news_date == day,
+                            News.news_time.in_(time),
+                            News.source_name.notin_(exclude_sources),
+                            News.news_theme.in_(news_themes),
+                        )
+                        .order_by(News.id.desc())
+                        .limit(limit)
+                        .offset(page_number * limit)
                     )
-                    .order_by(News.id.desc())
-                    .limit(limit)
-                    .offset(page_number * limit)
-                )
-            ).all()
+                ).all()
+            except Exception as e:
+                logger.error(f"Ошибка в sql запросе 1: {e}")
+                return False
         else:
-            news = (
-                await session.scalars(
-                    select(News)
-                    .where(
-                        News.news_date == day,
-                        News.news_time.in_(time),
-                        News.source_group == mass_media,
-                        News.source_name.notin_(exclude_sources),
-                        News.news_theme.in_(news_themes),
+            try:
+                news = (
+                    await session.scalars(
+                        select(News)
+                        .where(
+                            News.news_date == day,
+                            News.news_time.in_(time),
+                            News.source_group == mass_media,
+                            News.source_name.notin_(exclude_sources),
+                            News.news_theme.in_(news_themes),
+                        )
+                        .order_by(News.id.desc())
+                        .limit(limit)
+                        .offset(page_number * limit)
                     )
-                    .order_by(News.id.desc())
-                    .limit(limit)
-                    .offset(page_number * limit)
-                )
-            ).all()
+                ).all()
+            except Exception as e:
+                logger.error(f"Ошибка в sql запросе 2: {e}")
+                return False
         page_number += 1
         return [news, page_number]
