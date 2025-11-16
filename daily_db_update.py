@@ -1,5 +1,5 @@
-from db_models.sync_models import News
-from db_models.sync_models import Session
+from sync_models import News
+from sync_models import Session
 from sqlalchemy import delete, update
 
 import logging

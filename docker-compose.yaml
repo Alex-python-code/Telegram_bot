@@ -11,6 +11,7 @@ services:
       DB_PORT: ${DB_PORT}
       DB_NAME: ${DB_NAME}
       TOKEN: ${TOKEN}
+      TZ: Europe/Samara
     volumes:
       - app-data:/app/data
     networks:

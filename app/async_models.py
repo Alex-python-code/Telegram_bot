@@ -24,7 +24,8 @@ try:
     )
     async_session = async_sessionmaker(engine)
 except Exception as e:
-    logger.critical(f'Не удалось подключиться к дб в async_models: {e}')
+    logger.critical(f"Не удалось подключиться к дб в async_models: {e}")
+
 
 class Base(AsyncAttrs, DeclarativeBase):
     pass
@@ -45,7 +46,7 @@ class User_preferences(Base):
     news_sources: Mapped[int] = mapped_column()
     news_types: Mapped[str] = mapped_column()
     exclude_news_sources: Mapped[str] = mapped_column(nullable=True)
-    news_region: Mapped[str] = mapped_column(String(50), nullable=True)
+    mailing: Mapped[int] = mapped_column()
 
 
 class News(Base):

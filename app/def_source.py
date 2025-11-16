@@ -4,20 +4,14 @@ from async_lru import alru_cache
 
 async def input_digit_limit_check(digits, limit):
     digits = digits.split(" ")
-    # print(f'type {type(digits)}')
     for digit in digits:
-        # print(f'digit {digit}')
         if int(digit) > limit:
-            # print(f'limit is {limit}')
-            # print(int(digit) > limit)
             return False
     return True
 
 
 async def input_is_digit(message, limit):
-    # print(f'1 limit is {limit}')
     user_message = " ".join((message.text).split())
-    # print(user_message)
     if user_message.replace(" ", "").isdigit():
         if not limit:
             return True

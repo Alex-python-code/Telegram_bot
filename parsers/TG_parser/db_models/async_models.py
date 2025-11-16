@@ -24,7 +24,8 @@ try:
     )
     async_session = async_sessionmaker(engine)
 except Exception as e:
-    logger.critical(f'Не удалось подключиться к дб в async_models: {e}')
+    logger.critical(f"Не удалось подключиться к дб в async_models: {e}")
+
 
 class Base(AsyncAttrs, DeclarativeBase):
     pass
@@ -36,6 +37,7 @@ class User(Base):
     tg_id = mapped_column(BigInteger, primary_key=True)
     user_name = mapped_column(Text)
     reg_date: Mapped[date] = mapped_column()
+    mailing: Mapped[int] = mapped_column()
 
 
 class User_preferences(Base):

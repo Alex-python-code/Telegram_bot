@@ -50,7 +50,7 @@ main_menu = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="Новости")],
         [KeyboardButton(text="Архив")],
-        [KeyboardButton(text="Настройки")],
+        [KeyboardButton(text="Настройки"), KeyboardButton(text="Рассылка")],
     ],
     resize_keyboard=True,
     one_time_keyboard=True,

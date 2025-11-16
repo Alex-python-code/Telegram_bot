@@ -23,12 +23,7 @@ PARSER_HASH = os.getenv("PARSER_HASH")
 PHONE_NUM = os.getenv("PHONE_NUM")
 
 
-app = Client(
-    "parser", 
-    api_id=PARSER_ID,
-    api_hash=PARSER_HASH,
-    phone_number=PHONE_NUM
-)
+app = Client("parser", api_id=PARSER_ID, api_hash=PARSER_HASH, phone_number=PHONE_NUM)
 
 
 class AiUtils:
@@ -52,12 +47,14 @@ class AiUtils:
 
 ai_module = AsyncAi()
 
-@app.on_message(filters = filters.private)
+
+@app.on_message(filters=filters.private)
 async def private_answer(client: Client, message: Message):
     logger.info("Сообщение в лс")
     await message.reply("Бот запущен и успешно работает")
 
-@app.on_message(filters = filters.channel)
+
+@app.on_message(filters=filters.channel)
 async def parsing_chanels_posts(client: Client, message: Message):
     chat = message.chat
     text = message.caption or message.text
@@ -77,9 +74,9 @@ async def parsing_chanels_posts(client: Client, message: Message):
 
 async def main():
     async with app:
-        
         await asyncio.Future()
         logger.info("Юзер бот запущен и авторизован")
+
 
 if __name__ == "__main__":
     handler = RotatingFileHandler("userbot.log", maxBytes=1_000_000, backupCount=6)

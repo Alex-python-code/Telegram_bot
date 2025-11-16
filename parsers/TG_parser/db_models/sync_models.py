@@ -28,7 +28,8 @@ try:
     )
     Session = sessionmaker(engine)
 except Exception as e:
-    logger.critical(f'Не удалось подключиться к бд в sync_models.py: {e}')
+    logger.critical(f"Не удалось подключиться к бд в sync_models.py: {e}")
+
 
 class Base(DeclarativeBase):
     pass
@@ -40,6 +41,7 @@ class User(Base):
     tg_id = mapped_column(BigInteger, primary_key=True)
     user_name = mapped_column(Text, nullable=True)
     reg_date: Mapped[date] = mapped_column()
+    mailing: Mapped[int] = mapped_column()
 
 
 class User_preferences(Base):
