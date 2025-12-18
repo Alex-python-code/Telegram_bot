@@ -22,4 +22,4 @@ RUN mkdir -p /app/data
 
 VOLUME /app/data
 
-CMD ["python", "userbot.py"]
+CMD ["python", "parser_bot.py"]
