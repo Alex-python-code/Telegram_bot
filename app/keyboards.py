@@ -99,3 +99,22 @@ selecting_time_interval_for_news = ReplyKeyboardMarkup(
     resize_keyboard=True,
     one_time_keyboard=True,
 )
+
+admin_panel = ReplyKeyboardMarkup(
+    keyboard=[
+        [
+            KeyboardButton(text="Активная аудитория"),
+            KeyboardButton(text="Найти пользователя"),
+        ],
+        [KeyboardButton(text="Приток аудитории")],
+        [KeyboardButton(text="Разослать сообщение")]
+    ],
+    resize_keyboard=True,
+    one_time_keyboard=True,
+)
+
+period_of_statistic = ReplyKeyboardMarkup(
+    keyboard=[[KeyboardButton(text="7 дней")], [KeyboardButton(text="30 дней")]],
+    resize_keyboard=True,
+    one_time_keyboard=True,
+)

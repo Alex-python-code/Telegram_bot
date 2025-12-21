@@ -1,20 +1,25 @@
 from aiogram import F, Router
-from aiogram.filters import CommandStart
-from aiogram.types import Message, CallbackQuery
+from aiogram.filters import CommandStart, Command
+from aiogram.types import Message, CallbackQuery, FSInputFile
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
 
 import app.keyboards as kb
 import app.def_source as dsrc
 import app.bot_database.bot_requests as rq
+from app.middleware.check_users_activity import MonitorUserActivity
 
 import logging
-from datetime import date
+from datetime import datetime
+from dotenv import load_dotenv
+import os
 
-
+load_dotenv()
 logger = logging.getLogger(__name__)
 
 router = Router()
+
+router.message.middleware(MonitorUserActivity())
 
 
 class Set_news_mailing(StatesGroup):
@@ -33,7 +38,7 @@ class Viewing_news(StatesGroup):
 
 class Set_preferences(StatesGroup):
     source = State()
-    news_types = State()
+    news_themes = State()
     exclude_news_sources = State()
     # news_region = State()
 
@@ -42,16 +47,137 @@ class Set_only_news_region(StatesGroup):
     only_news_region = State()
 
 
+class Admin_panel(StatesGroup):
+    run_as_admin = State()
+    enter_username = State()
+    make_audience_chart = State()
+    make_activity_chart = State()
+
+
 class Reg(StatesGroup):
     name = State()
     number = State()
+
+
+@router.message(Command("admin"))
+async def start_as_admin(message: Message, state: FSMContext):
+    if message.from_user.id in list(map(int, os.getenv("ADMINS").split())):
+        await state.set_state(Admin_panel.run_as_admin)
+        await message.answer("Админ панель открыта", reply_markup=kb.admin_panel)
+    else:
+        logger.info("Пользователь не является админом")
+
+
+@router.message(F.text == "Активная аудитория", Admin_panel.run_as_admin)
+async def get_active_audience_period(message: Message, state: FSMContext):
+    await message.answer(
+        f"За какой период показать статистику?", reply_markup=kb.period_of_statistic
+    )
+    await state.set_state(Admin_panel.make_activity_chart)
+
+
+@router.message(F.text, Admin_panel.make_activity_chart)
+async def send_user_activity_chart(message: Message, state: FSMContext):
+    periods = {"7 дней": 7, "30 дней": 30}
+    if not message.text in periods.keys():
+        await message.answer("Такой период отсутствует")
+        await state.set_state(Admin_panel.run_as_admin)
+        return
+    try:
+        response = await dsrc.user_activity_chart(periods.get(message.text))
+        if not response:
+            raise ValueError('response пуст')
+
+    except Exception as e:
+        logger.error(f"Не удалось создать диаграмму: {e}")
+        await message.answer("Не удалось создать диаграмму")
+        await state.set_state(Admin_panel.run_as_admin)
+        return
+
+    chart = FSInputFile("active_audience.png")
+    await message.answer_photo(
+        photo=chart,
+        caption=f"Количество пользователей за {periods.get(message.text)} дней",
+        reply_markup=kb.admin_panel,
+    )
+    await state.set_state(Admin_panel.run_as_admin)
+    return
+
+
+@router.message(F.text == "Найти пользователя", Admin_panel.run_as_admin)
+async def find_user(message: Message, state: FSMContext):
+    await message.answer("Введи имя пользователя")
+    await state.set_state(Admin_panel.enter_username)
+
+
+@router.message(F.text, Admin_panel.enter_username)
+async def enter_username(message: Message, state: FSMContext):
+    """Вывод данных о пользователе"""
+    try:
+        if not message.text.isdigit():
+            username = message.text.replace("@", "")
+            tg_id = await rq.convert_username_to_tg_id(username)
+        else:
+            tg_id = message.text
+        about_user = await rq.user_profile(tg_id)
+    except Exception as e:
+        logger.error(f"Ошибка при запросе профиля пользователя: {e}")
+        return
+    await message.answer(
+        f"Тг id: {about_user[0].tg_id}\n\
+Имя пользователя: @{about_user[0].user_name}\n\
+Дата регистрации: {about_user[0].reg_date}\n\
+Последняя активность: {about_user[0].last_activity}\n\
+Темы новостей: {about_user[1].news_themes}\n\
+Виды источников новостей: {about_user[1].news_sources}\n\
+Исключённые источники: {about_user[1].exclude_news_sources}"
+    )
+    await state.set_state(Admin_panel.run_as_admin)
+
+
+@router.message(F.text == "Приток аудитории", Admin_panel.run_as_admin)
+async def get_all_audience_peri(message: Message, state: FSMContext):
+    await message.answer(
+        "За какой период показать статистику?",
+        reply_markup=kb.period_of_statistic,
+    )
+    await state.set_state(Admin_panel.make_audience_chart)
+
+
+@router.message(F.text, Admin_panel.make_audience_chart)
+async def send_audience_chart(message: Message, state: FSMContext):
+    """Создание и отправка диаграммы с количеством пользователей"""
+    periods = {"7 дней": 7, "30 дней": 30}
+    if not message.text in periods.keys():
+        await message.answer("Такой период отсутствует")
+        await state.set_state(Admin_panel.run_as_admin)
+        return
+    try:
+        response = await dsrc.chart_of_all_users(periods.get(message.text))
+        if not response:
+            raise ValueError('response пуст')
+        
+    except Exception as e:
+        logger.error(f"Не удалось создать диаграмму: {e}")
+        await message.answer("Не удалось создать диаграмму")
+        await state.set_state(Admin_panel.run_as_admin)
+        return
+
+    chart = FSInputFile("audience_for_period.png")
+    await message.answer_photo(
+        photo=chart,
+        caption=f"Количество пользователей за {periods.get(message.text)} дней",
+        reply_markup=kb.admin_panel,
+    )
+    await state.set_state(Admin_panel.run_as_admin)
+    return
 
 
 @router.message(CommandStart())
 async def cmd_start(message: Message, state: FSMContext):
     if await rq.is_user_first(message.from_user.id):
         await rq.reg_user(
-            message.from_user.id, message.from_user.first_name, date.today()
+            message.from_user.id, message.from_user.username, datetime.now()
         )
         await message.answer(
             """Здравствуйте!
@@ -71,7 +197,6 @@ async def cmd_start(message: Message, state: FSMContext):
 @router.callback_query(F.data == "main_menu")
 async def main_menu(callback: CallbackQuery, state: FSMContext):
     user_state = await state.get_state()
-    # print(user_state)
     if user_state:
         await state.clear()
     await callback.answer("Меню открыто")
@@ -84,17 +209,23 @@ async def main_menu(callback: CallbackQuery, state: FSMContext):
 @router.message(F.text == "Рассылка")
 async def subscribe_to_mailing(message: Message, state: FSMContext):
     await message.answer(
-        "Напишите восколько отправлять вам новости по МСК+1, с точностью до часа\nПример: 15"
+        "Напишите восколько отправлять вам новости по МСК+1, с точностью до часа\nПример: 15\n\nЕсли хотите отказаться от рассылки напишите 25"
     )
     await state.set_state(Set_news_mailing.set_time)
 
 
 @router.message(Set_news_mailing.set_time)
 async def set_mailing_time(message: Message, state: FSMContext):
-    if not message.text.isdigit() or int(message.text) > 24:
+    if not message.text.isdigit() or int(message.text) > 25:
         await message.answer("Не корректный ввод")
         return
-    resp = await rq.set_time_of_mailing(message.from_user.id, int(message.text))
+    
+    mailing_time = int(message.text)
+
+    if int(message.text) == 25:
+        mailing_time = None
+
+    resp = await rq.set_time_of_mailing(message.from_user.id, mailing_time)
 
     if not resp:
         await message.answer(
@@ -105,7 +236,7 @@ async def set_mailing_time(message: Message, state: FSMContext):
             "Это главное меню\nЗдесь вы можете вабрать интересующие разделы",
             reply_markup=kb.main_menu,
         )
-        
+
         return
 
     await message.answer("Данные успешно обновлены", reply_markup=kb.main_menu)
@@ -127,8 +258,8 @@ async def user_profile(message: Message):
     data = await dsrc.get_user_profile(message.from_user.id)
     await message.answer(
         f"Ваше имя: {data['user_name']}\n\
-Тип новостей: {data['news_type']}\n\
-Источники новостей: {data['news_sources']}\n\
+Темы новостей: {data['news_type']}\n\
+Виды источников новостей: {data['news_sources']}\n\
 Исключённые источники: {data['exclude_news_sources']}"
     )
 
@@ -241,7 +372,7 @@ async def today_news(message: Message, state: FSMContext):
     if len(news_viewing_state["user_news"]) == 0:
         today_news = await rq.get_news_for_user(
             preferences.news_sources,
-            preferences.news_types.split(),
+            preferences.news_themes.split(),
             preferences.exclude_news_sources.split(),
             5,
             news_viewing_state["page_number"],
@@ -293,23 +424,22 @@ async def preferences_two(message: Message, state: FSMContext):
         return
 
     await state.update_data(source=encode_sources[message.text])
-    await state.set_state(Set_preferences.news_types)
+    await state.set_state(Set_preferences.news_themes)
     await message.answer(
         "Выберите темы которые Вам интересны.\n\nПример записи: 1 7 3\n\n1. Спортивные\n2. Политические\n3. Образование\n4. Научные\n5. Экономические\n6. Социальные\n7. Культурные\n8. Программирование",
         reply_markup=kb.go_to_main_menu,
     )
 
 
-@router.message(Set_preferences.news_types, F.text)
+@router.message(Set_preferences.news_themes, F.text)
 async def preferences_three(message: Message, state: FSMContext):
     """Исключение источников новостей"""
     all_news_sources = 8
-    # print(all_news_sources)
     if not await dsrc.input_is_digit(message, all_news_sources):
         return
 
     await state.update_data(
-        news_types=await dsrc.del_repeated_values(((message.text).split()))
+        news_themes=await dsrc.del_repeated_values(((message.text).split()))
     )
     await state.set_state(Set_preferences.exclude_news_sources)
 
@@ -348,7 +478,7 @@ async def preferences_five(message: Message, state: FSMContext):
     await rq.set_users_preferences(
         tg_id,
         user_news_preferences["source"],
-        user_news_preferences["news_types"],
+        user_news_preferences["news_themes"],
         user_news_preferences["exclude_news_sources"],
     )
     await state.clear()

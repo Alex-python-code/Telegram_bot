@@ -1,5 +1,6 @@
 import app.bot_database.bot_requests as rq
 from async_lru import alru_cache
+from datetime import date, timedelta
 
 
 async def input_digit_limit_check(digits, limit):
@@ -78,3 +79,91 @@ async def del_repeated_values(message):
     # data = [i for i in message]
     data = sorted(set(message))
     return (" ".join(map(str, data))).strip()
+
+
+async def chart_of_all_users(period: int) -> bool:
+    """График количества пользователей.
+
+    Args:
+        period (int): Период за который идёт анализ
+    """
+    today = date.today()
+    first_day_of_period = today - timedelta(days=period)
+    audience_for_period = await rq.count_users_in_period(first_day_of_period)
+    
+    if not audience_for_period:
+        return False
+    
+    await make_chart(
+        audience_for_period, period, "audience_for_period.png", "Пользователи", "Дата"
+    )
+    return True
+
+
+async def user_activity_chart(period: int) -> bool:
+    """График активности пользователей.
+
+    Args:
+        period (int): Период за который идёт анализ
+    """
+    today = date.today()
+    first_day = today - timedelta(days=period)
+    result = await rq.count_of_users_activity(first_day)
+
+    if not result:
+        return False
+
+    dates = [day for day in result.get('days')]
+    active_users = [users for users in result.get('active_users')]
+    all_users = [users for users in result.get('all_users')]
+    activity_coeff = []
+    for active, all in zip(active_users, all_users):
+        activity_coeff.append(active / all)
+
+    print(dates)
+    print(activity_coeff)
+    await make_chart(
+        {"days": dates, "users": activity_coeff},
+        period,
+        "active_audience.png",
+        "Коэффициент активности",
+        "Дата",
+    )
+    return True
+
+
+async def make_chart(
+    audience_for_period: dict, period: int, image_name: str, xlabel: str, ylabel: str
+) -> None:
+    """Создание графика с аналитикой пользователей
+
+    Args:
+        audience_for_period (dict): Словарь с двумя списками, 'days' - даты, 'users' - значения
+        period (int): Период за который идёт анализ
+        image_name (str): Имя с которым будет сохранён график
+        xlabel (str): Имя вертикальной шкалы
+        ylabel (str): Имя горизонтальной шкалы
+    """
+    import matplotlib.pyplot as plt
+
+    title_of_chart = "Количесво пользователей по дням"
+    days = audience_for_period.get("days", [0])
+    days = list(map(str, days))
+    number_of_users = audience_for_period.get("users", [0])
+
+    if period == 30:
+        days = days[::7]
+        number_of_users = number_of_users[::7]
+        title_of_chart = "Количество пользователей по неделям"
+
+    days.sort()
+    number_of_users.sort()
+
+    plt.bar(days, number_of_users, color="steelblue")
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.title(title_of_chart)
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+
+    plt.savefig(image_name, dpi=300)

@@ -56,5 +56,5 @@ async def hourly_news_mailing():
                 user.tg_id, "Я не смог найти подходящие для Вас новости, простите :("
             )
             return
-
+        await bot.get
         await bot.send_message(user.tg_id, news[0].news_body)

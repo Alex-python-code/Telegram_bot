@@ -6,22 +6,26 @@ from app.async_models import (
     News_region,
     News_source,
     News_theme,
+    Users_statistics
 )
 from sqlalchemy import select, func
 
 import logging
+from datetime import date, timedelta
 
 
 logger = logging.getLogger(__name__)
 
 
 async def reg_user(tg_id, user_name, reg_date):
+    """Регистрация пользователя"""
     async with async_session() as session:
         session.add(User(tg_id=tg_id, user_name=user_name, reg_date=reg_date))
         await session.commit()
 
 
-async def set_users_preferences(tg_id, news_source, news_types, exclude_news_sources):
+async def set_users_preferences(tg_id, news_source, news_themes, exclude_news_sources):
+    """Установить предпочтения пользователя"""
     async with async_session() as session:
         user = await session.scalar(
             select(User_preferences).where(User_preferences.tg_id == tg_id)
@@ -31,21 +35,20 @@ async def set_users_preferences(tg_id, news_source, news_types, exclude_news_sou
                 User_preferences(
                     tg_id=tg_id,
                     news_sources=news_source,
-                    news_types=news_types,
+                    news_themes=news_themes,
                     exclude_news_sources=exclude_news_sources,
                 )
             )
-        # news_region = news_region))
         elif user:
             user.tg_id = tg_id
             user.news_sources = news_source
-            user.news_types = news_types
+            user.news_themes = news_themes
             user.exclude_news_sources = exclude_news_sources
-            # user.news_region = news_region
         await session.commit()
 
 
-async def set_time_of_mailing(tg_id, time: int):
+async def set_time_of_mailing(tg_id, time):
+    """Установить время рассылки новостей"""
     async with async_session() as session:
         try:
             user = await session.scalar(
@@ -59,10 +62,8 @@ async def set_time_of_mailing(tg_id, time: int):
         return True
 
 
-# get requests
-
-
-async def does_user_have_preferences(tg_id: str):
+async def does_user_have_preferences(tg_id: str) -> bool:
+    """Настроены ли у пользователя предпочтения"""
     async with async_session() as session:
         user = await session.scalar(
             select(User_preferences).where(User_preferences.tg_id == tg_id)
@@ -86,6 +87,7 @@ async def get_source_info(source_id):
 
 
 async def get_users_news_preferences(tg_id):
+    """По id пользователя выдаёт его предпочтения"""
     async with async_session() as session:
         preferences = await session.scalar(
             select(User_preferences).where(User_preferences.tg_id == tg_id)
@@ -96,6 +98,7 @@ async def get_users_news_preferences(tg_id):
 async def get_news_for_user(
     mass_media, news_themes, exclude_sources, limit, page_number, day, time
 ):
+    """Выбрать 5 последних новостей для пользователя"""
     try:
         exclude_sources = list(map(int, exclude_sources))
         news_themes = list(map(int, news_themes))
@@ -137,7 +140,7 @@ async def get_news_for_user(
                             News.source_name.notin_(exclude_sources),
                             News.news_theme.in_(news_themes),
                         )
-                        .order_by(News.news_time.desc())
+                        .order_by(News.news_time.desc(), News.id.desc())
                         .limit(limit)
                         .offset(page_number * limit)
                     )
@@ -149,7 +152,8 @@ async def get_news_for_user(
         return [news, page_number]
 
 
-async def is_user_first(tg_id):
+async def is_user_first(tg_id) -> bool:
+    """Проверка на то, что пользователь пишет впервые"""
     async with async_session() as session:
         user = await session.scalar(select(User).where(User.tg_id == tg_id))
         if user:
@@ -157,24 +161,15 @@ async def is_user_first(tg_id):
         return True
 
 
-async def user_profile(tg_id: int):
+async def user_profile(tg_id: int) -> list:
+    """Получение профиля пользователя"""
     async with async_session() as session:
-        user = (
-            (await session.execute(select(User).where(User.tg_id == tg_id)))
-            .scalars()
-            .all()
-        )
+        user = (await session.scalars(select(User).where(User.tg_id == tg_id))).all()
         preferences = (
-            (
-                await session.execute(
-                    select(User_preferences).where(User_preferences.tg_id == tg_id)
-                )
+            await session.scalars(
+                select(User_preferences).where(User_preferences.tg_id == tg_id)
             )
-            .scalars()
-            .all()
-        )
-        # print(f'user {user}, {type(user)}')
-        # print(f'preferences {preferences}, {type(preferences)}')
+        ).all()
         data = user + preferences
         return data
 
@@ -201,5 +196,101 @@ async def get_all_news_sources(source_type):
 
 
 async def get_count_of_news_sources():
+    """Получить количество новостных источников"""
     async with async_session() as session:
         return await session.scalar(select(func.count(News_theme.id)))
+
+
+async def get_number_of_users():
+    """Получить количество всех пользователей"""
+    async with async_session() as session:
+        return await session.scalar(select(func.count(User.tg_id)))
+
+
+async def get_users_activity() -> list | int:
+    """Получить количество активных пользователей"""
+    async with async_session() as session:
+        week_ago = date.today() - timedelta(days=7)
+        today = await session.scalar(
+            select(func.count()).where(User.last_activity == date.today())
+        )
+        last_week = await session.scalar(
+            select(func.count()).where(User.last_activity >= week_ago)
+        )
+
+        return [today, last_week]
+
+
+async def convert_username_to_tg_id(username) -> int:
+    """Конвертирует имя пользователя в tg id"""
+    async with async_session() as session:
+        return await session.scalar(
+            select(User.tg_id).where(User.user_name == username)
+        )
+
+
+async def count_users_in_period(first_day: date) -> dict[str, tuple]:
+    """Запрос количества пользователей за каждый день периода.
+    Args:
+        first_day: - Первый день периода для выборки данных.
+
+    Returns:
+        dict: - Словарь имеет аргументы 'days', 'users'
+    """
+    async with async_session() as session:
+        try:
+            results = (
+                await session.execute(
+                    select(Users_statistics.day, Users_statistics.all_users)
+                    .where(Users_statistics.day >= first_day)
+                    .order_by(Users_statistics.day.desc())
+                )
+            ).all()
+
+        except Exception as e:
+            logger.error(f'Ошибка при получении количества пользователей в файле bot_requests по причине: {e}')
+            return False
+        
+        if not results:
+            logger.error('Отсутствуют данные о количестве пользователей')
+            return False
+
+        days, users = map(list, zip(*results))
+
+        return {"days": days, "users": users}
+
+
+async def count_of_users_activity(first_day: date) -> dict[str, tuple] | bool:
+    """Запрос количества активных пользователей за каждый день периода.
+    Args:
+        first_day: - Первый день периода для выборки данных.
+    Returns:
+        dict: - Словарь имеет аргументы 'days', 'active_users', 'all_users'
+    """
+    async with async_session() as session:
+        try:
+            results = (
+                await session.execute(
+                    select(
+                        Users_statistics.day,
+                        Users_statistics.users_activity,
+                        Users_statistics.all_users,
+                    )
+                    .where(Users_statistics.day >= first_day)
+                    .order_by(Users_statistics.day.desc())
+                )
+            ).all()
+        except Exception as e:
+            logger.error(f'Ошибка при получении активности пользователей в файле bot_requests по причине: {e}')
+            return False
+        
+        if not results:
+            logger.error('Отсутствуют данные об активности пользователей')
+            return False
+        
+        results = list(map(tuple, results))
+        try:
+            days, users_activity, all_users = zip(*results)
+        except Exception as e:
+            print(e)
+        return {"days": days, "active_users": users_activity, "all_users": all_users}

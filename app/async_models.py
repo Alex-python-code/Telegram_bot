@@ -37,6 +37,7 @@ class User(Base):
     tg_id = mapped_column(BigInteger, primary_key=True)
     user_name = mapped_column(Text)
     reg_date: Mapped[date] = mapped_column()
+    last_activity: Mapped[date] = mapped_column()
 
 
 class User_preferences(Base):
@@ -44,7 +45,7 @@ class User_preferences(Base):
 
     tg_id = mapped_column(BigInteger, primary_key=True)
     news_sources: Mapped[int] = mapped_column()
-    news_types: Mapped[str] = mapped_column()
+    news_themes: Mapped[str] = mapped_column()
     exclude_news_sources: Mapped[str] = mapped_column(nullable=True)
     mailing: Mapped[int] = mapped_column()
 
@@ -86,6 +87,14 @@ class News_theme(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     theme_name: Mapped[str] = mapped_column(String(20))
+
+
+class Users_statistics(Base):
+    __tablename__ = "users_statistics"
+
+    day: Mapped[date] = mapped_column(primary_key=True)
+    users_activity: Mapped[int] = mapped_column()
+    all_users: Mapped[int] = mapped_column()
 
 
 async def async_main():
