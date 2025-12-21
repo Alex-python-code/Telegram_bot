@@ -27,3 +27,4 @@ class Admin_panel(StatesGroup):
     make_audience_chart = State()
     make_activity_chart = State()
     send_message = State()
+    sticky_factor_calculation = State()

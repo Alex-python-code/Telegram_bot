@@ -93,7 +93,7 @@ async def chart_of_all_users(period: int) -> bool:
 
     if not audience_for_period:
         return False
-
+    
     await make_chart(
         audience_for_period, period, "audience_for_period.png", "Пользователи", "Дата"
     )
@@ -141,8 +141,8 @@ async def make_chart(
         audience_for_period (dict): Словарь с двумя списками, 'days' - даты, 'users' - значения
         period (int): Период за который идёт анализ
         image_name (str): Имя с которым будет сохранён график
-        xlabel (str): Имя вертикальной шкалы
-        ylabel (str): Имя горизонтальной шкалы
+        xlabel (str): Имя горизонтальной шкалы
+        ylabel (str): Имя вертикальной шкалы
     """
     import matplotlib.pyplot as plt
 
@@ -152,12 +152,10 @@ async def make_chart(
     number_of_users = audience_for_period.get("users", [0])
 
     if period == 30:
-        days = days[::7]
-        number_of_users = number_of_users[::7]
         title_of_chart = "Количество пользователей по неделям"
 
-    days.sort()
-    number_of_users.sort()
+    days = days[::-1]
+    number_of_users = number_of_users[::-1]
 
     plt.bar(days, number_of_users, color="steelblue")
     plt.xlabel(xlabel)
@@ -167,3 +165,4 @@ async def make_chart(
     plt.tight_layout()
 
     plt.savefig(image_name, dpi=300)
+    plt.close()

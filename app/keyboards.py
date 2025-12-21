@@ -108,16 +108,26 @@ admin_panel = ReplyKeyboardMarkup(
         ],
         [
             KeyboardButton(text="Найти пользователя"),
-            KeyboardButton(text="Разослать сообщение")
+            KeyboardButton(text="Разослать сообщение"),
         ],
-        [KeyboardButton(text="Sticky Factor")]
+        [KeyboardButton(text="Sticky Factor")],
     ],
     resize_keyboard=True,
     one_time_keyboard=True,
 )
 
-period_of_statistic = ReplyKeyboardMarkup(
+dayly_period = ReplyKeyboardMarkup(
     keyboard=[[KeyboardButton(text="7 дней")], [KeyboardButton(text="30 дней")]],
+    resize_keyboard=True,
+    one_time_keyboard=True,
+)
+
+
+monthly_period = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="Этот месяц")],
+        [KeyboardButton(text="Прошлый месяц")],
+    ],
     resize_keyboard=True,
     one_time_keyboard=True,
 )

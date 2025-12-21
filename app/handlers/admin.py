@@ -6,13 +6,14 @@ from aiogram.fsm.context import FSMContext
 import app.keyboards as kb
 import app.def_source as dsrc
 import app.bot_database.bot_requests as rq
-
 from .states import Admin_panel
+from create_bot import bot
 
 import logging
 from dotenv import load_dotenv
 import os
 import asyncio
+from datetime import date, timedelta
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -32,7 +33,7 @@ async def start_as_admin(message: Message, state: FSMContext):
 @admin_router.message(F.text == "Активная аудитория", Admin_panel.run_as_admin)
 async def get_active_audience_period(message: Message, state: FSMContext):
     await message.answer(
-        "За какой период показать статистику?", reply_markup=kb.period_of_statistic
+        "За какой период показать статистику?", reply_markup=kb.dayly_period
     )
     await state.set_state(Admin_panel.make_activity_chart)
 
@@ -83,6 +84,7 @@ async def enter_username(message: Message, state: FSMContext):
         about_user = await rq.user_profile(tg_id)
     except Exception as e:
         logger.error(f"Ошибка при запросе профиля пользователя: {e}")
+        await state.set_state(Admin_panel.run_as_admin)
         return
     await message.answer(
         f"Тг id: {about_user[0].tg_id}\n\
@@ -100,7 +102,7 @@ async def enter_username(message: Message, state: FSMContext):
 async def get_all_audience_period(message: Message, state: FSMContext):
     await message.answer(
         "За какой период показать статистику?",
-        reply_markup=kb.period_of_statistic,
+        reply_markup=kb.dayly_period,
     )
     await state.set_state(Admin_panel.make_audience_chart)
 
@@ -134,33 +136,97 @@ async def send_audience_chart(message: Message, state: FSMContext):
     return
 
 
-@admin_router.message(F.text == 'Разослать сообщение', Admin_panel.run_as_admin)
+@admin_router.message(F.text == "Разослать сообщение", Admin_panel.run_as_admin)
 async def get_message_for_send(message: Message, state: FSMContext):
-    await message.answer('Напишите сообщение которое будет отослано каждому пользователю')
+    await message.answer(
+        "Напишите сообщение которое будет отослано каждому пользователю"
+    )
     await state.set_state(Admin_panel.send_message)
 
 
 @admin_router.message(F.text, Admin_panel.send_message)
 async def send_message(message: Message, state: FSMContext):
-    from bot import bot
+    if message.text.startswith("/"):
+        await message.answer(
+            "Вы отправили мне команду, поэтому рассылка отменена",
+            reply_markup=kb.admin_panel,
+        )
+        await state.set_state(Admin_panel.run_as_admin)
+        return
+
     iter_number = 0
 
     while True:
         tg_ids = await rq.get_all_tg_id(iter_number, 100)
         if not tg_ids:
+            await message.answer("Рассылка завершена", reply_markup=kb.admin_panel)
+            await state.set_state(Admin_panel.run_as_admin)
             return
-        
+
         for tg_id in tg_ids:
             try:
                 await bot.send_message(tg_id, message.text)
             except Exception as e:
-                logger.warning(f'Не удалось отправить сообщение пользователю {tg_id} по причине {e}')
-    
+                logger.warning(
+                    f"Не удалось отправить сообщение пользователю {tg_id} по причине {e}"
+                )
+
             await asyncio.sleep(0.05)
 
         iter_number += 1
         await asyncio.sleep(0.1)
 
+
+@admin_router.message(F.text == "Sticky Factor", Admin_panel.run_as_admin)
+async def get_sticky_factor_period(message: Message, state: FSMContext):
+    await message.answer(
+        "Выберите период анализа Sticky Factor\n\nМесяц - последние 30 дней, а не календарный месяц",
+        reply_markup=kb.monthly_period,
+    )
+    await state.set_state(Admin_panel.sticky_factor_calculation)
+
+
+@admin_router.message(F.text, Admin_panel.sticky_factor_calculation)
+async def sticky_factor_calculation(message: Message, state: FSMContext):
+    periods = ["Этот месяц", "Прошлый месяц"]
+    today = date.today() - timedelta(days=1)
+
+    if message.text not in periods:
+        await message.answer("Такой период отсутствует", reply_markup=kb.admin_panel)
+        await state.set_state(Admin_panel.run_as_admin)
+        return
+
+    if message.text == periods[0]:
+        start_date = today - timedelta(days=30)
+        result = await rq.sticky_factor_rq(start_date, today)
+
+    elif message.text == periods[1]:
+        today = today - timedelta(days=30)
+        start_date = today - timedelta(days=30)
+        result = await rq.sticky_factor_rq(start_date, today)
+
+    if not result:
+        logger.warning("Данных для аналитики sticky factor не оказалось")
+        await message.answer(
+            "Данных для аналитики sticky factor не оказалось",
+            reply_markup=kb.admin_panel,
+        )
+        await state.set_state(Admin_panel.run_as_admin)
+        return
+
+    print(result)
+    if result[1] == 0:
+        await message.answer(
+            f"DAU = {result[0]}\nMAU = {result[1]}\nSticky factor = активные пользователи отсутствуют",
+            reply_markup=kb.admin_panel,
+        )
+        await state.set_state(Admin_panel.run_as_admin)
+        return
     
-@admin_router.message(F.text == 'Sticky Factor', Admin_panel.run_as_admin)
-async def get
+    sticky_factor = result[0] / result[1]
+    await message.answer(
+        f"DAU = {result[0]}\nMAU = {result[1]}\nSticky factor = {sticky_factor}",
+        reply_markup=kb.admin_panel,
+    )
+    await state.set_state(Admin_panel.run_as_admin)
+    return

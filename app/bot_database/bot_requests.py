@@ -210,15 +210,15 @@ async def get_number_of_users():
 async def get_users_activity() -> list | int:
     """Получить количество активных пользователей"""
     async with async_session() as session:
-        week_ago = date.today() - timedelta(days=7)
-        today = await session.scalar(
-            select(func.count()).where(User.last_activity == date.today())
+        week_ago = date.finish_day() - timedelta(days=7)
+        finish_day = await session.scalar(
+            select(func.count()).where(User.last_activity == date.finish_day())
         )
         last_week = await session.scalar(
             select(func.count()).where(User.last_activity >= week_ago)
         )
 
-        return [today, last_week]
+        return [finish_day, last_week]
 
 
 async def convert_username_to_tg_id(username) -> int:
@@ -298,15 +298,39 @@ async def count_of_users_activity(first_day: date) -> dict[str, tuple] | bool:
         except Exception as e:
             print(e)
         return {"days": days, "active_users": users_activity, "all_users": all_users}
-    
+
 
 async def get_all_tg_id(iter_number: int, limit: int) -> list:
-    """Получить тг id пользователей порционно"""  
+    """Получить тг id пользователей порционно"""
     async with async_session() as session:
         try:
-            result = (await session.scalars(select(User.tg_id).offset(iter_number * limit).limit(limit))).all()
-        except:
-            logger.warning(f'Не удалось получить tg id во время итерации {iter_number}')
+            result = (
+                await session.scalars(
+                    select(User.tg_id).offset(iter_number * limit).limit(limit)
+                )
+            ).all()
+        except Exception as e:
+            logger.warning(f"Не удалось получить tg id по причине {e}")
 
         return result
 
+
+async def sticky_factor_rq(start_date: date, finish_day: date) -> list:
+    async with async_session() as session:
+        try:
+            mau = await session.scalar(
+                select(func.count()).where(User.last_activity >= start_date, User.last_activity <= finish_day)
+            )
+
+            dau = await session.scalar(
+                select(func.count()).where(User.last_activity == finish_day)
+            )
+        except Exception as e:
+            logger.error(f"Не удалось получить значения mau и dau по причине {e}")
+            return None
+
+        if not dau:
+            dau = 0
+        if not mau:
+            mau = 0
+        return [dau, mau]

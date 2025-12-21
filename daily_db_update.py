@@ -23,7 +23,7 @@ with Session() as session:
     today_count_users = session.scalar(select(func.count(User.tg_id)))
 
     try:
-        session.execute(delete(News).where(News.news_date >= 3))
+        session.execute(delete(News).where(News.news_date > 3))
         logger.info("Старые строки в таблице удалены")
         session.execute(update(News).values(news_date=News.news_date + 1))
     except Exception as e:

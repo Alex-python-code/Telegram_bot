@@ -1,7 +1,8 @@
 from .scheduler_rq import get_users_for_mailing
 from app.bot_database.bot_requests import get_news_for_user, get_users_news_preferences
-import asyncio
+from create_bot import bot
 
+import asyncio
 import logging
 from datetime import datetime
 
@@ -26,8 +27,6 @@ async def get_news(mass_media, news_themes, exclude_sources, time):
 
 
 async def hourly_news_mailing():
-    from bot import bot
-
     now_time = datetime.now().hour
     time = [now_time, now_time - 1]
     iter_number = 0
@@ -36,7 +35,7 @@ async def hourly_news_mailing():
         users = await get_users_for_mailing()
         if not users:
             return
-        
+
         for user in users:
             try:
                 news = ""
@@ -61,8 +60,10 @@ async def hourly_news_mailing():
             try:
                 await bot.send_message(user, news[0].news_body)
             except Exception as e:
-                logger.warning(f'Не удалось отправить новость пользователю {user} по причине {e}')
-                
+                logger.warning(
+                    f"Не удалось отправить новость пользователю {user} по причине {e}"
+                )
+
             await asyncio.sleep(0.05)
 
         await asyncio.sleep(0.1)
