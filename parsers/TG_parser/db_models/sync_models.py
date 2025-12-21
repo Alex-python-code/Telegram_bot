@@ -100,5 +100,6 @@ class Users_statistics(Base):
     users_activity: Mapped[int] = mapped_column()
     all_users: Mapped[int] = mapped_column()
 
+
 def sync_main():
     Base.metadata.create_all(engine)

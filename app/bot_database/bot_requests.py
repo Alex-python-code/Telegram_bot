@@ -6,7 +6,7 @@ from app.async_models import (
     News_region,
     News_source,
     News_theme,
-    Users_statistics
+    Users_statistics,
 )
 from sqlalchemy import select, func
 
@@ -248,11 +248,13 @@ async def count_users_in_period(first_day: date) -> dict[str, tuple]:
             ).all()
 
         except Exception as e:
-            logger.error(f'Ошибка при получении количества пользователей в файле bot_requests по причине: {e}')
+            logger.error(
+                f"Ошибка при получении количества пользователей в файле bot_requests по причине: {e}"
+            )
             return False
-        
+
         if not results:
-            logger.error('Отсутствуют данные о количестве пользователей')
+            logger.error("Отсутствуют данные о количестве пользователей")
             return False
 
         days, users = map(list, zip(*results))
@@ -281,16 +283,30 @@ async def count_of_users_activity(first_day: date) -> dict[str, tuple] | bool:
                 )
             ).all()
         except Exception as e:
-            logger.error(f'Ошибка при получении активности пользователей в файле bot_requests по причине: {e}')
+            logger.error(
+                f"Ошибка при получении активности пользователей в файле bot_requests по причине: {e}"
+            )
             return False
-        
+
         if not results:
-            logger.error('Отсутствуют данные об активности пользователей')
+            logger.error("Отсутствуют данные об активности пользователей")
             return False
-        
+
         results = list(map(tuple, results))
         try:
             days, users_activity, all_users = zip(*results)
         except Exception as e:
             print(e)
         return {"days": days, "active_users": users_activity, "all_users": all_users}
+    
+
+async def get_all_tg_id(iter_number: int, limit: int) -> list:
+    """Получить тг id пользователей порционно"""  
+    async with async_session() as session:
+        try:
+            result = (await session.scalars(select(User.tg_id).offset(iter_number * limit).limit(limit))).all()
+        except:
+            logger.warning(f'Не удалось получить tg id во время итерации {iter_number}')
+
+        return result
+

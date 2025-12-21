@@ -90,10 +90,10 @@ async def chart_of_all_users(period: int) -> bool:
     today = date.today()
     first_day_of_period = today - timedelta(days=period)
     audience_for_period = await rq.count_users_in_period(first_day_of_period)
-    
+
     if not audience_for_period:
         return False
-    
+
     await make_chart(
         audience_for_period, period, "audience_for_period.png", "Пользователи", "Дата"
     )
@@ -113,9 +113,9 @@ async def user_activity_chart(period: int) -> bool:
     if not result:
         return False
 
-    dates = [day for day in result.get('days')]
-    active_users = [users for users in result.get('active_users')]
-    all_users = [users for users in result.get('all_users')]
+    dates = [day for day in result.get("days")]
+    active_users = [users for users in result.get("active_users")]
+    all_users = [users for users in result.get("all_users")]
     activity_coeff = []
     for active, all in zip(active_users, all_users):
         activity_coeff.append(active / all)

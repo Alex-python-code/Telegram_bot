@@ -104,10 +104,13 @@ admin_panel = ReplyKeyboardMarkup(
     keyboard=[
         [
             KeyboardButton(text="Активная аудитория"),
-            KeyboardButton(text="Найти пользователя"),
+            KeyboardButton(text="Приток аудитории"),
         ],
-        [KeyboardButton(text="Приток аудитории")],
-        [KeyboardButton(text="Разослать сообщение")]
+        [
+            KeyboardButton(text="Найти пользователя"),
+            KeyboardButton(text="Разослать сообщение")
+        ],
+        [KeyboardButton(text="Sticky Factor")]
     ],
     resize_keyboard=True,
     one_time_keyboard=True,
