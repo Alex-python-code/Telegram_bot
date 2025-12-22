@@ -1,6 +1,70 @@
 import app.bot_database.bot_requests as rq
+import app.keyboards as kb
+
 from async_lru import alru_cache
 from datetime import date, timedelta
+from aiogram.types import Message
+from aiogram.fsm.context import FSMContext
+from logging import getLogger
+
+
+logger = getLogger(__name__)
+
+
+async def send_main_menu(message: Message):
+    """Отправляет сообщение с главным меню"""
+    await message.answer(
+        "Это главное меню\nЗдесь вы можете выбрать интересующие разделы",
+        reply_markup=kb.main_menu,
+    )
+
+
+async def load_news_if_needed(state: FSMContext, news_viewing_state: dict, message: Message) -> bool:
+    """
+    Загружает новости из БД, если кэш пуст.
+    
+    Returns:
+        True если новости успешно загружены или уже есть в кэше, False при ошибке
+    """
+    if news_viewing_state["news_for_user"]:
+        return True
+    
+    preferences = news_viewing_state["user_preferences"]
+    
+    try:
+        news_data = await rq.get_news_for_user(
+            preferences.news_sources,
+            preferences.news_themes.split(),
+            preferences.exclude_news_sources.split(),
+            5,
+            news_viewing_state["page_number"],
+            news_viewing_state["select_day"],
+            news_viewing_state["select_time"],
+        )
+        
+        if not news_data:
+            logger.error("get_news_for_user returned empty result")
+            await message.answer(
+                "Приносим свои извинения, на сервере произошла ошибка. Попробуйте позже"
+            )
+            await state.clear()
+            await send_main_menu(message)
+            return False
+            
+        await state.update_data(
+            news_for_user=news_data[0], 
+            page_number=news_data[1]
+        )
+        return True
+        
+    except Exception as e:
+        logger.error(f"Failed to load news: {e}", exc_info=True)
+        await message.answer(
+            "Приносим свои извинения, на сервере произошла ошибка. Попробуйте позже"
+        )
+        await state.clear()
+        await send_main_menu(message)
+        return False
 
 
 async def input_digit_limit_check(digits, limit):
@@ -81,6 +145,31 @@ async def del_repeated_values(message):
     return (" ".join(map(str, data))).strip()
 
 
+async def news_users_chart(period: int) -> bool:
+    """График количества новых пользователей.
+
+    Args:
+        period (int): Период за который идёт анализ
+    """
+    today = date.today()
+    first_day_of_period = today - timedelta(days=period + 2)
+    audience_for_period = await rq.count_users_in_period(first_day_of_period)
+
+    if not audience_for_period:
+        return False
+    
+    days = audience_for_period.get('days', [])
+    days = days[1::]
+    input_users = audience_for_period.get('users', [])
+    output_users = [input_users[i+1] - input_users[i] for i in range(len(input_users) - 1)]
+    audience_for_period = {'days': days, 'users': output_users}
+
+    await make_chart(
+        audience_for_period, period, "new_users_for_period.png", "Новые пользователи", "Дата", "Приток пользователей"
+    )
+    return True
+
+
 async def chart_of_all_users(period: int) -> bool:
     """График количества пользователей.
 
@@ -88,14 +177,14 @@ async def chart_of_all_users(period: int) -> bool:
         period (int): Период за который идёт анализ
     """
     today = date.today()
-    first_day_of_period = today - timedelta(days=period)
+    first_day_of_period = today - timedelta(days=period + 1)
     audience_for_period = await rq.count_users_in_period(first_day_of_period)
 
     if not audience_for_period:
         return False
     
     await make_chart(
-        audience_for_period, period, "audience_for_period.png", "Пользователи", "Дата"
+        audience_for_period, period, "audience_for_period.png", "Пользователи", "Дата", "Количество пользователей"
     )
     return True
 
@@ -107,7 +196,7 @@ async def user_activity_chart(period: int) -> bool:
         period (int): Период за который идёт анализ
     """
     today = date.today()
-    first_day = today - timedelta(days=period)
+    first_day = today - timedelta(days=period + 1)
     result = await rq.count_of_users_activity(first_day)
 
     if not result:
@@ -120,39 +209,36 @@ async def user_activity_chart(period: int) -> bool:
     for active, all in zip(active_users, all_users):
         activity_coeff.append(active / all)
 
-    print(dates)
-    print(activity_coeff)
     await make_chart(
         {"days": dates, "users": activity_coeff},
         period,
         "active_audience.png",
         "Коэффициент активности",
         "Дата",
+        "Коэффициент активности пользователей"
     )
     return True
 
 
 async def make_chart(
-    audience_for_period: dict, period: int, image_name: str, xlabel: str, ylabel: str
+    audience_for_period: dict, period: int, file_name: str, ylabel: str, xlabel: str, chart_name: str
 ) -> None:
     """Создание графика с аналитикой пользователей
 
     Args:
         audience_for_period (dict): Словарь с двумя списками, 'days' - даты, 'users' - значения
         period (int): Период за который идёт анализ
-        image_name (str): Имя с которым будет сохранён график
-        xlabel (str): Имя горизонтальной шкалы
-        ylabel (str): Имя вертикальной шкалы
+        image_name (str): Название с которым будет сохранён график
+        xlabel (str): Название горизонтальной шкалы
+        ylabel (str): Название вертикальной шкалы
+        chart_name (str): Название графика
     """
     import matplotlib.pyplot as plt
 
-    title_of_chart = "Количесво пользователей по дням"
+    title_of_chart = chart_name
     days = audience_for_period.get("days", [0])
     days = list(map(str, days))
     number_of_users = audience_for_period.get("users", [0])
-
-    if period == 30:
-        title_of_chart = "Количество пользователей по неделям"
 
     days = days[::-1]
     number_of_users = number_of_users[::-1]
@@ -164,5 +250,5 @@ async def make_chart(
     plt.xticks(rotation=45)
     plt.tight_layout()
 
-    plt.savefig(image_name, dpi=300)
+    plt.savefig(file_name, dpi=300)
     plt.close()

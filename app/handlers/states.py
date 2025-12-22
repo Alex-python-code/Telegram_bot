@@ -12,7 +12,7 @@ class Viewing_news(StatesGroup):
     page_number = State()
     num_of_news = State()
     user_preferences = State()
-    user_news = State()
+    news_for_user = State()
 
 
 class Set_preferences(StatesGroup):
@@ -26,5 +26,7 @@ class Admin_panel(StatesGroup):
     enter_username = State()
     make_audience_chart = State()
     make_activity_chart = State()
+    make_new_users_chart = State()
     send_message = State()
     sticky_factor_calculation = State()
+

@@ -3,12 +3,19 @@ from aiogram.types import Message
 
 from datetime import datetime
 import logging
+from logging.handlers import RotatingFileHandler
 import asyncio
 
 from .middleware_rq import set_users_activity
 
 
 logger = logging.getLogger(__name__)
+handler = RotatingFileHandler("maiddleware.log", maxBytes=1_000_000, backupCount=6)
+format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+handler.setFormatter(format)
+logger.addHandler(handler)
+logger.setLevel(logging.INFO)
+logger.propagate = False
 
 
 class MonitorUserActivity(BaseMiddleware):

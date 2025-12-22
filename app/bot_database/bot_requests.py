@@ -120,7 +120,7 @@ async def get_news_for_user(
                             News.source_name.notin_(exclude_sources),
                             News.news_theme.in_(news_themes),
                         )
-                        .order_by(News.news_time.desc())
+                        .order_by(News.id.desc())
                         .limit(limit)
                         .offset(page_number * limit)
                     )
@@ -140,7 +140,7 @@ async def get_news_for_user(
                             News.source_name.notin_(exclude_sources),
                             News.news_theme.in_(news_themes),
                         )
-                        .order_by(News.news_time.desc(), News.id.desc())
+                        .order_by(News.id.desc())
                         .limit(limit)
                         .offset(page_number * limit)
                     )

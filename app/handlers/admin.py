@@ -27,10 +27,10 @@ async def start_as_admin(message: Message, state: FSMContext):
         await state.set_state(Admin_panel.run_as_admin)
         await message.answer("Админ панель открыта", reply_markup=kb.admin_panel)
     else:
-        logger.info("Пользователь не является админом")
+        logger.info(f"Пользователь {message.from_user.id} не является админом")
 
 
-@admin_router.message(F.text == "Активная аудитория", Admin_panel.run_as_admin)
+@admin_router.message(F.text == "Коэффициент активности", Admin_panel.run_as_admin)
 async def get_active_audience_period(message: Message, state: FSMContext):
     await message.answer(
         "За какой период показать статистику?", reply_markup=kb.dayly_period
@@ -98,7 +98,7 @@ async def enter_username(message: Message, state: FSMContext):
     await state.set_state(Admin_panel.run_as_admin)
 
 
-@admin_router.message(F.text == "Приток аудитории", Admin_panel.run_as_admin)
+@admin_router.message(F.text == "База пользователей", Admin_panel.run_as_admin)
 async def get_all_audience_period(message: Message, state: FSMContext):
     await message.answer(
         "За какой период показать статистику?",
@@ -118,7 +118,7 @@ async def send_audience_chart(message: Message, state: FSMContext):
     try:
         response = await dsrc.chart_of_all_users(periods.get(message.text))
         if not response:
-            raise ValueError("response пуст")
+            raise ValueError("response в app.handlers.admin пуст")
 
     except Exception as e:
         logger.error(f"Не удалось создать диаграмму: {e}")
@@ -214,7 +214,6 @@ async def sticky_factor_calculation(message: Message, state: FSMContext):
         await state.set_state(Admin_panel.run_as_admin)
         return
 
-    print(result)
     if result[1] == 0:
         await message.answer(
             f"DAU = {result[0]}\nMAU = {result[1]}\nSticky factor = активные пользователи отсутствуют",
@@ -226,6 +225,44 @@ async def sticky_factor_calculation(message: Message, state: FSMContext):
     sticky_factor = result[0] / result[1]
     await message.answer(
         f"DAU = {result[0]}\nMAU = {result[1]}\nSticky factor = {sticky_factor}",
+        reply_markup=kb.admin_panel,
+    )
+    await state.set_state(Admin_panel.run_as_admin)
+    return
+
+
+@admin_router.message(F.text, Admin_panel.run_as_admin)
+async def new_audience(message: Message, state: FSMContext):
+    await message.answer(
+        "За какой период показать статистику?",
+        reply_markup=kb.dayly_period,
+    )
+    await state.set_state(Admin_panel.make_new_users_chart)
+
+
+@admin_router.message(F.text, Admin_panel.make_new_users_chart)
+async def send_new_users_chart(message: Message, state: FSMContext):
+    """Создание и отправка графика притока пользователей"""
+    periods = {"7 дней": 7, "30 дней": 30}
+    if message.text not in periods.keys():
+        await message.answer("Такой период отсутствует")
+        await state.set_state(Admin_panel.run_as_admin)
+        return
+    try:
+        response = await dsrc.news_users_chart(periods.get(message.text))
+        if not response:
+            raise ValueError("response в app.handlers.admin пуст")
+
+    except Exception as e:
+        logger.error(f"Не удалось создать диаграмму: {e}")
+        await message.answer("Не удалось создать диаграмму")
+        await state.set_state(Admin_panel.run_as_admin)
+        return
+
+    chart = FSInputFile("new_users_for_period.png")
+    await message.answer_photo(
+        photo=chart,
+        caption=f"Количество пользователей за {periods.get(message.text)} дней",
         reply_markup=kb.admin_panel,
     )
     await state.set_state(Admin_panel.run_as_admin)

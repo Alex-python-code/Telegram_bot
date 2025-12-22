@@ -18,8 +18,6 @@ async def set_users_activity(users: dict):
             )
             await session.execute(stmt)
             await session.commit()
-            print("Всё записано")
-            print(users)
 
         except Exception as e:
             return e
