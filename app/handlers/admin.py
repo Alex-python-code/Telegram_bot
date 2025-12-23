@@ -221,7 +221,7 @@ async def sticky_factor_calculation(message: Message, state: FSMContext):
         )
         await state.set_state(Admin_panel.run_as_admin)
         return
-    
+
     sticky_factor = result[0] / result[1]
     await message.answer(
         f"DAU = {result[0]}\nMAU = {result[1]}\nSticky factor = {sticky_factor}",

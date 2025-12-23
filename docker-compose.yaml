@@ -11,6 +11,7 @@ services:
       DB_PORT: ${DB_PORT}
       DB_NAME: ${DB_NAME}
       TOKEN: ${TOKEN}
+      ADMINS: ${ADMINS}
       TZ: Europe/Samara
     volumes:
       - app-data:/app/data
@@ -21,7 +22,7 @@ services:
   news-parser:
     image: news-parser
     build:
-      context: ./parsers/TG_parser/
+      context: ./parsers/tg_parser/
     restart: always
     environment:
       DB_USER: ${DB_USER}
@@ -35,6 +36,8 @@ services:
       TZ: Europe/Samara
     networks:
       - bot-network
+    env_file:
+      - .env
 
 volumes:
   app-data:

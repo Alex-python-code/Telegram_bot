@@ -8,9 +8,11 @@ COPY requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY parser_bot.py .
+COPY userbot.py .
 
 COPY parser.session .
+
+COPY prompt.py .
 
 COPY db_models/ ./db_models
 
@@ -22,4 +24,4 @@ RUN mkdir -p /app/data
 
 VOLUME /app/data
 
-CMD ["python", "parser_bot.py"]
+CMD ["python", "userbot.py"]

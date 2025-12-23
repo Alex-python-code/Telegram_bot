@@ -4,6 +4,7 @@ from logging.handlers import RotatingFileHandler
 
 from app.handlers import all_routers
 from app.async_models import async_main
+from app.def_source import cleanup_expired_states
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from scheduler.hourly_news_sender import hourly_news_mailing
@@ -20,6 +21,7 @@ async def main():
     dp.message.middleware(MonitorUserActivity())
     await async_main()
     dp.include_routers(*all_routers)
+    asyncio.create_task(cleanup_expired_states(dp.storage, 300))
     await dp.start_polling(bot)
 
 

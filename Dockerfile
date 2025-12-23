@@ -8,6 +8,8 @@ COPY requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
+COPY create_bot.py .
+
 COPY bot.py .
 
 COPY __init__.py .

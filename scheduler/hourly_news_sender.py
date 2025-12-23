@@ -17,7 +17,7 @@ async def get_news(mass_media, news_themes, exclude_sources, time):
             exclude_sources=exclude_sources,
             limit=1,
             page_number=0,
-            day=0,
+            day=[0, 1, 2],
             time=time,
         )
     except Exception as e:

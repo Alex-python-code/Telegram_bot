@@ -12,23 +12,25 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def send_compressed_text(list_of_texts):
+def send_compressed_text(list_of_texts: list):
     with Session() as session:
         ready_to_send = []
-        ready_to_send.append(
-            News(
-                news_body=list_of_texts["news_body"],
-                news_theme=list_of_texts["news_theme"],
-                news_time=list_of_texts["news_time"],
-                news_date=list_of_texts["news_date"],
-                source_group=list_of_texts["mass_media"],
-                source_name=int(list_of_texts["source_name"]),
+        for item in list_of_texts:
+            ready_to_send.append(
+                News(
+                    news_body=item["news_body"],
+                    news_theme=item["news_theme"],
+                    news_time=item["news_time"],
+                    news_date=item["news_date"],
+                    source_group=item["mass_media"],
+                    source_name=int(item["source_name"]),
+                )
             )
-        )
         try:
             session.add_all(ready_to_send)
             session.commit()
         except Exception as e:
             logger.error(f"Ошибка записи новости в бд: {e}")
+            session.rollback()
             return
         logger.info("Данные записаны в базу успешно")

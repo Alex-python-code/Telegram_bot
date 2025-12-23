@@ -1,11 +1,15 @@
 import app.bot_database.bot_requests as rq
 import app.keyboards as kb
 
-from async_lru import alru_cache
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
+from aiogram.fsm.storage.base import BaseStorage
+from create_bot import bot
+
 from logging import getLogger
+from async_lru import alru_cache
+import asyncio
 
 
 logger = getLogger(__name__)
@@ -19,18 +23,20 @@ async def send_main_menu(message: Message):
     )
 
 
-async def load_news_if_needed(state: FSMContext, news_viewing_state: dict, message: Message) -> bool:
+async def load_news_if_needed(
+    state: FSMContext, news_viewing_state: dict, message: Message
+) -> bool:
     """
     Загружает новости из БД, если кэш пуст.
-    
+
     Returns:
         True если новости успешно загружены или уже есть в кэше, False при ошибке
     """
     if news_viewing_state["news_for_user"]:
         return True
-    
+
     preferences = news_viewing_state["user_preferences"]
-    
+
     try:
         news_data = await rq.get_news_for_user(
             preferences.news_sources,
@@ -41,7 +47,7 @@ async def load_news_if_needed(state: FSMContext, news_viewing_state: dict, messa
             news_viewing_state["select_day"],
             news_viewing_state["select_time"],
         )
-        
+
         if not news_data:
             logger.error("get_news_for_user returned empty result")
             await message.answer(
@@ -50,13 +56,10 @@ async def load_news_if_needed(state: FSMContext, news_viewing_state: dict, messa
             await state.clear()
             await send_main_menu(message)
             return False
-            
-        await state.update_data(
-            news_for_user=news_data[0], 
-            page_number=news_data[1]
-        )
+
+        await state.update_data(news_for_user=news_data[0], page_number=news_data[1])
         return True
-        
+
     except Exception as e:
         logger.error(f"Failed to load news: {e}", exc_info=True)
         await message.answer(
@@ -157,15 +160,22 @@ async def news_users_chart(period: int) -> bool:
 
     if not audience_for_period:
         return False
-    
-    days = audience_for_period.get('days', [])
+
+    days = audience_for_period.get("days", [])
     days = days[1::]
-    input_users = audience_for_period.get('users', [])
-    output_users = [input_users[i+1] - input_users[i] for i in range(len(input_users) - 1)]
-    audience_for_period = {'days': days, 'users': output_users}
+    input_users = audience_for_period.get("users", [])
+    output_users = [
+        input_users[i + 1] - input_users[i] for i in range(len(input_users) - 1)
+    ]
+    audience_for_period = {"days": days, "users": output_users}
 
     await make_chart(
-        audience_for_period, period, "new_users_for_period.png", "Новые пользователи", "Дата", "Приток пользователей"
+        audience_for_period,
+        period,
+        "new_users_for_period.png",
+        "Новые пользователи",
+        "Дата",
+        "Приток пользователей",
     )
     return True
 
@@ -182,9 +192,14 @@ async def chart_of_all_users(period: int) -> bool:
 
     if not audience_for_period:
         return False
-    
+
     await make_chart(
-        audience_for_period, period, "audience_for_period.png", "Пользователи", "Дата", "Количество пользователей"
+        audience_for_period,
+        period,
+        "audience_for_period.png",
+        "Пользователи",
+        "Дата",
+        "Количество пользователей",
     )
     return True
 
@@ -215,13 +230,18 @@ async def user_activity_chart(period: int) -> bool:
         "active_audience.png",
         "Коэффициент активности",
         "Дата",
-        "Коэффициент активности пользователей"
+        "Коэффициент активности пользователей",
     )
     return True
 
 
 async def make_chart(
-    audience_for_period: dict, period: int, file_name: str, ylabel: str, xlabel: str, chart_name: str
+    audience_for_period: dict,
+    period: int,
+    file_name: str,
+    ylabel: str,
+    xlabel: str,
+    chart_name: str,
 ) -> None:
     """Создание графика с аналитикой пользователей
 
@@ -252,3 +272,32 @@ async def make_chart(
 
     plt.savefig(file_name, dpi=300)
     plt.close()
+
+
+async def cleanup_expired_states(storage: BaseStorage, timeout_seconds: int):
+    while True:
+        await asyncio.sleep(60)
+
+        for key, state_data in list(storage.storage.items()):
+            data = state_data.data
+            last_activity = data.get("last_activity")
+
+            if not last_activity:
+                continue
+
+            elapsed = datetime.today().timestamp() - last_activity
+            if elapsed > timeout_seconds:
+                chat_id = key.chat_id
+                user_id = key.user_id
+
+                await storage.set_state(key=key, state=None)
+                await storage.set_data(key=key, data={})
+
+                try:
+                    await bot.send_message(
+                        chat_id=chat_id,
+                        text="Это главное меню\nЗдесь вы можете выбрать интересующие разделы",
+                        reply_markup=kb.main_menu,
+                    )
+                except Exception as e:
+                    logger.warning(f"Не удалось отправить сообщение {user_id}: {e}")

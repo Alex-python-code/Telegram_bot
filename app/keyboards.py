@@ -103,12 +103,12 @@ selecting_time_interval_for_news = ReplyKeyboardMarkup(
 admin_panel = ReplyKeyboardMarkup(
     keyboard=[
         [
-            KeyboardButton(text="Коэффициент активности"),
-            KeyboardButton(text="База пользователей"),
-        ],
-        [
             KeyboardButton(text="Найти пользователя"),
             KeyboardButton(text="Разослать сообщение"),
+        ],
+        [
+            KeyboardButton(text="Коэффициент активности"),
+            KeyboardButton(text="База пользователей"),
         ],
         [
             KeyboardButton(text="Sticky Factor"),

@@ -9,10 +9,11 @@ from logging.handlers import RotatingFileHandler
 from dotenv import load_dotenv
 import asyncio
 from datetime import datetime, timedelta
-from pyrogram import filters
 from pyrogram.types import Message
 from pyrogram.client import Client
 from pyrogram.enums import ChatType
+
+from prompt import PROMPT
 from parser_rq.tg_parser_requests import get_source_info
 
 load_dotenv()
@@ -24,16 +25,20 @@ PHONE_NUM = os.getenv("PHONE_NUM")
 app = Client("parser", api_id=PARSER_ID, api_hash=PARSER_HASH, phone_number=PHONE_NUM)
 
 
+class AIRequestFailed(Exception):
+    """Ошибка при отправке новости в ии"""
+
+    pass
+
+
 class AiUtils:
     @staticmethod
     async def create_prompt(news_text, source_name, time):
         ai_model = "gpt-5-nano"
-        assistant_text = 'Тег текста выведи в самом начале и в формате ---"тег" '
-        ai_system_text = "Сожми текст, до 30-50 слов, на выходе должен быть красивый лаконочный текст. Если текст является рекламой, а не новостью или просто не имеет смысла, в ответ верни False вместо сжатого текста. Присвой тексту один из тегов Спортивные Политические Образование Научные Экономические Социальные Культурные. не используй вводных конструкций, просто выведи сжатый текст."
         source_info = await get_source_info(source_name)
         data_for_ai_request = {
             "model": ai_model,
-            "prompt": ai_system_text + assistant_text + news_text,
+            "prompt": PROMPT + news_text,
             "is_mass_media": source_info.mass_media,
             "source_name": source_info.source_id,
             "time_interval": time,
@@ -48,12 +53,6 @@ last_message_ids = {}
 ai_module = AsyncAi()
 
 
-@app.on_message(filters.private)
-async def private_answer(client: Client, message: Message):
-    logger.info("Сообщение в лс")
-    await message.reply("Запущен и успешно работает")
-
-
 async def process_message(message: Message, chat_title: str):
     """Обработка одного сообщения"""
     text = message.caption or message.text
@@ -62,18 +61,17 @@ async def process_message(message: Message, chat_title: str):
         logger.debug(f"Сообщение {message.id} в {chat_title} без текста, пропускаю")
         return
 
-    logger.info(f"Обработка сообщения из {chat_title}, ID: {message.id}")
-    logger.info(f"Текст (первые 50 символов): {text[:50]}")
-    logger.info(f"Дата: {message.date}")
-
     try:
         prompt = await AiUtils.create_prompt(
             text, chat_title, str(message.date.strftime("%H"))
         )
+    except Exception:
+        logger.error("Ошбка при создании промпта")
 
-        logger.info("Отправка запроса в ИИ")
-        await ai_module.main(prompt)
-        logger.info(f"Сообщение {message.id} успешно обработано")
+    try:
+        result = await ai_module.main(prompt)
+        if not result:
+            raise AIRequestFailed("Отправка новости в ии завершилась ошибкой")
 
     except Exception as e:
         logger.error(f"Ошибка при обработке сообщения {message.id}: {e}")
@@ -117,7 +115,6 @@ async def poll_channels():
             dialogs = await get_all_dialogs()
             channels = [d for d in dialogs if d.chat.type == ChatType.CHANNEL]
 
-            logger.info(f"Проверка {len(channels)} каналов...")
 
             for dialog in channels:
                 chat_id = dialog.chat.id
@@ -147,7 +144,6 @@ async def poll_channels():
 
                         # Если сообщение новее последнего обработанного
                         if message_id > last_message_ids[chat_id]:
-                            logger.info(f"Новое сообщение в {chat_title}: {message_id}")
 
                             # Проверяем, что сообщение не старше 10 минут
                             message_date = message.date
@@ -179,9 +175,6 @@ async def poll_channels():
                 # Небольшая задержка между проверкой каналов
                 await asyncio.sleep(2)
 
-            logger.info(
-                f"Цикл проверки завершен. Следующая проверка через {CHECK_INTERVAL} секунд"
-            )
             await asyncio.sleep(CHECK_INTERVAL)
 
         except Exception as e:

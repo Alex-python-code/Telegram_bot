@@ -20,8 +20,14 @@ logger = logging.getLogger(__name__)
 async def reg_user(tg_id, user_name, reg_date):
     """Регистрация пользователя"""
     async with async_session() as session:
-        session.add(User(tg_id=tg_id, user_name=user_name, reg_date=reg_date))
-        await session.commit()
+        user = User(tg_id=tg_id, user_name=user_name, reg_date=reg_date)
+        pref = User_preferences(tg_id=tg_id, news_sources=2, news_themes='1 2 3 4 5 6 7 8', exclude_news_sources='0')
+
+        session.add_all([user, pref])
+        try:
+            await session.commit()
+        except Exception as e:
+            logger.error(f'Не удалось добавить пользователя {tg_id}: {e}')
 
 
 async def set_users_preferences(tg_id, news_source, news_themes, exclude_news_sources):
@@ -96,7 +102,7 @@ async def get_users_news_preferences(tg_id):
 
 
 async def get_news_for_user(
-    mass_media, news_themes, exclude_sources, limit, page_number, day, time
+    mass_media, news_themes, exclude_sources, limit, page_number, day: list, time
 ):
     """Выбрать 5 последних новостей для пользователя"""
     try:
@@ -115,7 +121,7 @@ async def get_news_for_user(
                     await session.scalars(
                         select(News)
                         .where(
-                            News.news_date == day,
+                            News.news_date.in_(day),
                             News.news_time.in_(time),
                             News.source_name.notin_(exclude_sources),
                             News.news_theme.in_(news_themes),
@@ -134,7 +140,7 @@ async def get_news_for_user(
                     await session.scalars(
                         select(News)
                         .where(
-                            News.news_date == day,
+                            News.news_date.in_(day),
                             News.news_time.in_(time),
                             News.source_group == mass_media,
                             News.source_name.notin_(exclude_sources),
@@ -319,7 +325,9 @@ async def sticky_factor_rq(start_date: date, finish_day: date) -> list:
     async with async_session() as session:
         try:
             mau = await session.scalar(
-                select(func.count()).where(User.last_activity >= start_date, User.last_activity <= finish_day)
+                select(func.count()).where(
+                    User.last_activity >= start_date, User.last_activity <= finish_day
+                )
             )
 
             dau = await session.scalar(
