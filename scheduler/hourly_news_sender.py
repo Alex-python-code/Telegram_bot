@@ -32,7 +32,7 @@ async def hourly_news_mailing():
     iter_number = 0
 
     while True:
-        users = await get_users_for_mailing()
+        users = await get_users_for_mailing(iter_number, 100)
         if not users:
             return
 

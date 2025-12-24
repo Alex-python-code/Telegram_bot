@@ -52,7 +52,7 @@ async def send_user_activity_chart(message: Message, state: FSMContext):
 
     except Exception as e:
         logger.error(f"Не удалось создать диаграмму: {e}")
-        await message.answer("Не удалось создать диаграмму")
+        await message.answer("Не удалось создать диаграмму", reply_markup=kb.admin_panel)
         await state.set_state(Admin_panel.run_as_admin)
         return
 
@@ -93,7 +93,8 @@ async def enter_username(message: Message, state: FSMContext):
 Последняя активность: {about_user[0].last_activity}\n\
 Темы новостей: {about_user[1].news_themes}\n\
 Виды источников новостей: {about_user[1].news_sources}\n\
-Исключённые источники: {about_user[1].exclude_news_sources}"
+Исключённые источники: {about_user[1].exclude_news_sources}", 
+reply_markup=kb.admin_panel
     )
     await state.set_state(Admin_panel.run_as_admin)
 
@@ -122,7 +123,7 @@ async def send_audience_chart(message: Message, state: FSMContext):
 
     except Exception as e:
         logger.error(f"Не удалось создать диаграмму: {e}")
-        await message.answer("Не удалось создать диаграмму")
+        await message.answer("Не удалось создать диаграмму", reply_markup=kb.admin_panel)
         await state.set_state(Admin_panel.run_as_admin)
         return
 
@@ -240,7 +241,7 @@ async def new_audience(message: Message, state: FSMContext):
     await state.set_state(Admin_panel.make_new_users_chart)
 
 
-@admin_router.message(F.text, Admin_panel.make_new_users_chart)
+@admin_router.message(F.text == 'Приток аудитории', Admin_panel.make_new_users_chart)
 async def send_new_users_chart(message: Message, state: FSMContext):
     """Создание и отправка графика притока пользователей"""
     periods = {"7 дней": 7, "30 дней": 30}
@@ -255,7 +256,7 @@ async def send_new_users_chart(message: Message, state: FSMContext):
 
     except Exception as e:
         logger.error(f"Не удалось создать диаграмму: {e}")
-        await message.answer("Не удалось создать диаграмму")
+        await message.answer("Не удалось создать диаграмму", reply_markup=kb.admin_panel)
         await state.set_state(Admin_panel.run_as_admin)
         return
 

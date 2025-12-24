@@ -26,7 +26,7 @@ def daily_db_update():
         try:
             session.execute(delete(News).where(News.news_date > 2))
             logger.info("Старые строки в таблице удалены")
-            session.execute(update(News).values(news_date=News.news_date - 1))
+            session.execute(update(News).values(news_date=News.news_date + 1))
         except Exception as e:
             logger.error(f"Не удалось обновить значения News.news_date по причине: {e}")
             session.rollback()

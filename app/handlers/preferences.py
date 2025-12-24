@@ -108,7 +108,8 @@ async def preferences_five(message: Message, state: FSMContext):
 @preferences_router.message(F.text == "Рассылка")
 async def subscribe_to_mailing(message: Message, state: FSMContext):
     await message.answer(
-        "Напишите восколько отправлять вам новости по МСК+1, с точностью до часа\nПример: 15\n\nЕсли хотите отказаться от рассылки напишите 25"
+        "Напишите восколько отправлять вам новости по МСК+1, с точностью до часа\nПример: 15\n\nЕсли хотите отказаться от рассылки напишите 25",
+        reply_markup=kb.go_to_main_menu
     )
     await state.set_state(Set_news_mailing.set_time)
 
