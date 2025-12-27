@@ -9,6 +9,7 @@ from logging.handlers import RotatingFileHandler
 from dotenv import load_dotenv
 import asyncio
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from pyrogram.types import Message
 from pyrogram.client import Client
 from pyrogram.enums import ChatType
@@ -56,6 +57,7 @@ ai_module = AsyncAi()
 async def process_message(message: Message, chat_title: str):
     """Обработка одного сообщения"""
     text = message.caption or message.text
+    message_time = message.date
 
     if not text:
         logger.debug(f"Сообщение {message.id} в {chat_title} без текста, пропускаю")
@@ -63,7 +65,7 @@ async def process_message(message: Message, chat_title: str):
 
     try:
         prompt = await AiUtils.create_prompt(
-            text, chat_title, str(message.date.strftime("%H"))
+            text, chat_title, message_time.strftime("%H")
         )
     except Exception:
         logger.error("Ошбка при создании промпта")
@@ -107,7 +109,6 @@ async def poll_channels():
     """Активный опрос каналов на наличие новых сообщений"""
     logger.info("Запуск активного парсинга каналов")
 
-    # Интервал проверки в секундах
     CHECK_INTERVAL = 60
 
     while True:
@@ -115,64 +116,60 @@ async def poll_channels():
             dialogs = await get_all_dialogs()
             channels = [d for d in dialogs if d.chat.type == ChatType.CHANNEL]
 
-
             for dialog in channels:
                 chat_id = dialog.chat.id
                 chat_title = dialog.chat.title
 
                 try:
-                    # Получаем последние 5 сообщений из канала
                     messages = await get_messages_from_channel(chat_id, limit=5)
 
                     if not messages:
                         logger.debug(f"Канал {chat_title} пуст или недоступен")
                         continue
 
-                    # Если это первый запуск для этого канала
+                    # Инициализация при первом запуске
                     if chat_id not in last_message_ids:
                         last_message_ids[chat_id] = messages[0].id
                         logger.info(
                             f"Инициализация для канала {chat_title}: последнее сообщение {messages[0].id}"
                         )
-                        # При первом запуске обрабатываем только самое свежее
                         await process_message(messages[0], chat_title)
                         continue
 
-                    # Проверяем новые сообщения (от новых к старым)
-                    for message in messages:
-                        message_id = message.id
-
-                        # Если сообщение новее последнего обработанного
-                        if message_id > last_message_ids[chat_id]:
-
-                            # Проверяем, что сообщение не старше 10 минут
+                    # Собираем новые сообщения (от старых к новым)
+                    new_messages = []
+                    for message in reversed(messages):  #Обрабатываем от старых к новым
+                        if message.id > last_message_ids[chat_id]:
+                            # Проверяем возраст сообщения
                             message_date = message.date
                             if message_date.tzinfo is not None:
                                 message_date = message_date.replace(tzinfo=None)
-
+                            
                             time_diff = datetime.now() - message_date
                             if time_diff < timedelta(minutes=10):
-                                await process_message(message, chat_title)
-                                # Задержка между обработкой сообщений
-                                await asyncio.sleep(30)
+                                new_messages.append(message)
                             else:
                                 logger.info(
-                                    f"Сообщение {message_id} слишком старое ({time_diff}), пропускаю"
+                                    f"Сообщение {message.id} слишком старое ({time_diff}), пропускаю"
                                 )
-                        else:
-                            # Дошли до уже обработанных сообщений
-                            break
+                                # Но обновляем ID, чтобы не проверять снова
+                                last_message_ids[chat_id] = max(last_message_ids[chat_id], message.id)
 
-                    # Обновляем ID последнего сообщения
-                    if messages:
-                        last_message_ids[chat_id] = messages[0].id
+                    # Обрабатываем новые сообщения
+                    for message in new_messages:
+                        logger.info(f"Обработка нового сообщения {message.id} из {chat_title}")
+                        
+                        #Обновляем ID СРАЗУ перед обработкой
+                        last_message_ids[chat_id] = message.id
+                        
+                        await process_message(message, chat_title)
+                        await asyncio.sleep(30)  # Задержка между сообщениями
 
                 except Exception as e:
                     logger.error(
                         f"Ошибка при обработке канала {chat_title}: {e}", exc_info=True
                     )
 
-                # Небольшая задержка между проверкой каналов
                 await asyncio.sleep(2)
 
             await asyncio.sleep(CHECK_INTERVAL)

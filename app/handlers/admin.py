@@ -3,6 +3,7 @@ from aiogram.filters import Command
 from aiogram.types import Message, FSInputFile
 from aiogram.fsm.context import FSMContext
 
+
 import app.keyboards as kb
 import app.def_source as dsrc
 import app.bot_database.bot_requests as rq
@@ -19,6 +20,12 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 admin_router = Router()
+
+
+@admin_router.message(F.text == "Выход")
+async def exit(message: Message):
+    await dsrc.send_main_menu(message)
+    return
 
 
 @admin_router.message(Command("admin"))
@@ -232,7 +239,7 @@ async def sticky_factor_calculation(message: Message, state: FSMContext):
     return
 
 
-@admin_router.message(F.text, Admin_panel.run_as_admin)
+@admin_router.message(F.text == 'Приток аудитории', Admin_panel.run_as_admin)
 async def new_audience(message: Message, state: FSMContext):
     await message.answer(
         "За какой период показать статистику?",
@@ -241,7 +248,7 @@ async def new_audience(message: Message, state: FSMContext):
     await state.set_state(Admin_panel.make_new_users_chart)
 
 
-@admin_router.message(F.text == 'Приток аудитории', Admin_panel.make_new_users_chart)
+@admin_router.message(F.text, Admin_panel.make_new_users_chart)
 async def send_new_users_chart(message: Message, state: FSMContext):
     """Создание и отправка графика притока пользователей"""
     periods = {"7 дней": 7, "30 дней": 30}

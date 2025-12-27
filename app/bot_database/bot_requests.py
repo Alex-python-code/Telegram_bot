@@ -112,8 +112,10 @@ async def get_news_for_user(
     except Exception as e:
         logger.warning(f"Ошибка при изменении типа данных {e}")
         return
+    
     if len(time) == 0:
         time = [i for i in range(25)]
+
     async with async_session() as session:
         if mass_media == 2:
             try:

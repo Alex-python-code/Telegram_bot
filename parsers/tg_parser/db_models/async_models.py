@@ -61,7 +61,6 @@ class News(Base):
     news_theme: Mapped[int] = mapped_column()
     news_time: Mapped[int] = mapped_column()
     news_date: Mapped[int] = mapped_column()
-    news_region_id: Mapped[int] = mapped_column()
 
 
 class News_region(Base):

@@ -37,6 +37,8 @@ class AsyncAi:
             ai_response = await self.make_ai_request(task)
         except Exception as e:
             logger.error(f"Ошибка при запросе в ИИ: {e}")
+            return False
+        
         if ai_response:
             logger.info(ai_response)
             result = self.find_tags(ai_response)
@@ -60,12 +62,13 @@ class AsyncAi:
 
         self.news_storage.append(configured_for_db)
 
-        if len(self.news_storage) >= 10:
+        if len(self.news_storage) >= 1:
             logger.info("Запускаю запись в базу")
             if len(configured_for_db) == 0:
                 logger.warning("Новости отсутствуют, записывать не чего")
                 return False
             send_compressed_text(self.news_storage)
+            self.news_storage = []
         return True
 
     def find_tags(self, text: dict) -> list[str] | None:
@@ -78,7 +81,7 @@ class AsyncAi:
             text_without_tags = text["response"].split("\n")[1]
             is_mass_media = text["is_mass_media"]
         except Exception as e:
-            logger.exception(f"Тег не найден, пропускаю новость. Ошибка: {e}")
+            logger.info(f"Тег не найден, пропускаю новость. Ошибка: {e}")
             return
 
         return [theme_tag_of_new, text_without_tags, int(is_mass_media)]

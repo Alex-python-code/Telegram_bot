@@ -114,6 +114,7 @@ admin_panel = ReplyKeyboardMarkup(
             KeyboardButton(text="Sticky Factor"),
             KeyboardButton(text="Приток аудитории"),
         ],
+        [KeyboardButton(text="Выход")]
     ],
     resize_keyboard=True,
     one_time_keyboard=True,

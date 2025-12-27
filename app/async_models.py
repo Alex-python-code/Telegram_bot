@@ -59,9 +59,8 @@ class News(Base):
     source_name: Mapped[int] = mapped_column()
     source_group: Mapped[int] = mapped_column()  # Телеграм или интернет
     news_theme: Mapped[int] = mapped_column()
-    news_time = mapped_column(Text)
+    news_time: Mapped[int] = mapped_column()
     news_date: Mapped[int] = mapped_column()
-    news_region_id: Mapped[int] = mapped_column()
 
 
 class News_region(Base):

@@ -10,7 +10,7 @@ from sqlalchemy import create_engine
 from dotenv import load_dotenv
 import os
 import logging
-from datetime import date
+from datetime import date, time
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +65,6 @@ class News(Base):
     news_theme: Mapped[int] = mapped_column()
     news_time: Mapped[int] = mapped_column()
     news_date: Mapped[int] = mapped_column()
-    news_region_id: Mapped[int] = mapped_column()
 
 
 class News_region(Base):
